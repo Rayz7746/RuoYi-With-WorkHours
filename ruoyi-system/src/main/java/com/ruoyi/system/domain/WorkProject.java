@@ -31,6 +31,9 @@ public class WorkProject extends BaseEntity
     /** 关联客户ID */
     @Excel(name = "关联客户ID", width = 30)
     private Long customerId;
+//
+    @Excel(name = "关联客户名称", targetAttr = "name", type = Excel.Type.EXPORT)
+    private WorkCustomer customer;
 
     /** 项目负责人ID(关联sys_user.user_id) */
     @Excel(name = "项目负责人ID(关联sys_user.user_id)", width = 30)
@@ -104,6 +107,16 @@ public class WorkProject extends BaseEntity
     public Long getCustomerId() 
     {
         return customerId;
+    }
+
+    public WorkCustomer getCustomer()
+    {
+        return customer;
+    }
+
+    public void setCustomer(WorkCustomer customer)
+    {
+        this.customer = customer;
     }
 
     public void setProjectManagerId(Long projectManagerId) 
@@ -201,6 +214,7 @@ public class WorkProject extends BaseEntity
             .append("isActive", getIsActive())
             .append("createdAt", getCreatedAt())
             .append("updatedAt", getUpdatedAt())
+            .append("customer", getCustomer() != null ? getCustomer().getName() : null)
             .toString();
     }
 }

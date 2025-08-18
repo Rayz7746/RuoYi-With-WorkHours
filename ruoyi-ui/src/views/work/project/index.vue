@@ -121,7 +121,10 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="项目名称" align="center" prop="name" />
       <el-table-column label="项目代码" align="center" prop="code" />
-      <el-table-column label="关联客户ID" align="center" prop="customerId" />
+      <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
+
+      <el-table-column label="关联客户" align="center" prop="customer.name" />
+
       <el-table-column label="项目负责人ID" align="center" prop="projectManagerId" />
       <el-table-column label="项目描述" align="center" prop="description" />
       <el-table-column label="联系人" align="center" prop="contactPerson" />

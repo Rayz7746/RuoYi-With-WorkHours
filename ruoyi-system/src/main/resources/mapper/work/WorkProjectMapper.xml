@@ -17,10 +17,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="isActive"    column="is_active"    />
         <result property="createdAt"    column="created_at"    />
         <result property="updatedAt"    column="updated_at"    />
+        <association property="customer"    javaType="WorkCustomer"     resultMap="customerResult"/>
     </resultMap>
 
+    <resultMap type="WorkCustomer" id="customerResult">
+        <result property="customerId"    column="customer_id"    />
+        <result property="name"    column="name"    />
+    </resultMap>
+
+
+<!--    p for WorkProject; c for WorkCustomer; u for User-->
     <sql id="selectWorkProjectVo">
-        select project_id, name, code, customer_id, project_manager_id, description, contact_person, is_default, is_billable, is_active, created_at, updated_at from work_project
+        select p.project_id, p.name, p.code, p.customer_id, p.project_manager_id, p.description, p.contact_person, p.is_default, p.is_billable, p.is_active, p.created_at, p.updated_at,
+        c.customer_id, c.name
+        from work_project p
+            left join work_customer c on p.customer_id = c.customer_id
+
     </sql>
 
     <select id="selectWorkProjectList" parameterType="WorkProject" resultMap="WorkProjectResult">
@@ -28,7 +40,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
             <if test="code != null  and code != ''"> and code = #{code}</if>
-            <if test="customerId != null "> and customer_id = #{customerId}</if>
+            <if test="customerId != null ">
+                and p.customer_id = #{customerId}
+            </if>
             <if test="projectManagerId != null "> and project_manager_id = #{projectManagerId}</if>
             <if test="description != null  and description != ''"> and description = #{description}</if>
             <if test="contactPerson != null  and contactPerson != ''"> and contact_person = #{contactPerson}</if>
