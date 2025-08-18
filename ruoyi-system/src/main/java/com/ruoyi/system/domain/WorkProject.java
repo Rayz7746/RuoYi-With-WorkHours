@@ -2,6 +2,7 @@ package com.ruoyi.system.domain;
 
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
@@ -29,15 +30,19 @@ public class WorkProject extends BaseEntity
     private String code;
 
     /** 关联客户ID */
-    @Excel(name = "关联客户ID", width = 30)
+    @Excel(name = "关联客户ID", width = 10)
     private Long customerId;
 //
-    @Excel(name = "关联客户名称", targetAttr = "name", type = Excel.Type.EXPORT)
+    @Excel(name = "关联客户名称", targetAttr = "customerName", type = Excel.Type.EXPORT)
     private WorkCustomer customer;
 
+
     /** 项目负责人ID(关联sys_user.user_id) */
-    @Excel(name = "项目负责人ID(关联sys_user.user_id)", width = 30)
+    @Excel(name = "项目负责人ID", width = 10)
     private Long projectManagerId;
+
+    @Excel(name = "项目负责人", targetAttr = "nickName", type = Excel.Type.EXPORT)
+    private SysUser user;
 
     /** 项目描述，可为空 */
     @Excel(name = "项目描述", width = 50)
@@ -117,6 +122,15 @@ public class WorkProject extends BaseEntity
     public void setCustomer(WorkCustomer customer)
     {
         this.customer = customer;
+    }
+
+    public SysUser getUser()
+    {
+        return user;
+    }
+    public void setUser(SysUser user)
+    {
+        this.user = user;
     }
 
     public void setProjectManagerId(Long projectManagerId) 

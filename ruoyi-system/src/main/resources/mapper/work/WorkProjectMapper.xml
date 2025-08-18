@@ -18,20 +18,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createdAt"    column="created_at"    />
         <result property="updatedAt"    column="updated_at"    />
         <association property="customer"    javaType="WorkCustomer"     resultMap="customerResult"/>
+        <association property="user"    javaType="SysUser"     resultMap="userResult"/>
+
     </resultMap>
 
     <resultMap type="WorkCustomer" id="customerResult">
         <result property="customerId"    column="customer_id"    />
         <result property="customerName"    column="customer_name"    />
+        <result property="isActiveCustomer"    column="is_active_customer"    />
+    </resultMap>
+
+    <resultMap type="SysUser" id="userResult">
+        <id     property="userId"        column="user_id"         />
+        <result property="userName"      column="user_name"       />
+        <result property="nickName"      column="nick_name"       />
     </resultMap>
 
 
-<!--    p for WorkProject; c for WorkCustomer; u for User-->
+
+    <!--    p for WorkProject; c for WorkCustomer; u for User-->
     <sql id="selectWorkProjectVo">
         select p.project_id, p.name, p.code, p.customer_id, p.project_manager_id, p.description, p.contact_person, p.is_default, p.is_billable, p.is_active, p.created_at, p.updated_at,
-        c.customer_id, c.customer_name
+        c.customer_id, c.customer_name, c.is_active_customer,
+        u.user_id, u.user_name, u.nick_name
+
         from work_project p
             left join work_customer c on p.customer_id = c.customer_id
+            left join sys_user u on p.project_manager_id = u.user_id
 
     </sql>
 
@@ -43,7 +56,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="customerId != null ">
                 and p.customer_id = #{customerId}
             </if>
-            <if test="projectManagerId != null "> and project_manager_id = #{projectManagerId}</if>
+            <if test="projectManagerId != null ">
+                and project_manager_id = #{projectManagerId}
+            </if>
             <if test="description != null  and description != ''"> and description = #{description}</if>
             <if test="contactPerson != null  and contactPerson != ''"> and contact_person = #{contactPerson}</if>
             <if test="isDefault != null "> and is_default = #{isDefault}</if>
