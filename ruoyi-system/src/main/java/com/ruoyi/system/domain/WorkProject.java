@@ -214,7 +214,7 @@ public class WorkProject extends BaseEntity
             .append("isActive", getIsActive())
             .append("createdAt", getCreatedAt())
             .append("updatedAt", getUpdatedAt())
-            .append("customer", getCustomer() != null ? getCustomer().getName() : null)
+            .append("customer", getCustomer() != null ? getCustomer().getCustomerName() : null)
             .toString();
     }
 }

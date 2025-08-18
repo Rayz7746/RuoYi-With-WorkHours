@@ -6,25 +6,25 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <resultMap type="WorkCustomer" id="WorkCustomerResult">
         <result property="customerId"    column="customer_id"    />
-        <result property="name"    column="name"    />
+        <result property="customerName"    column="customer_name"    />
         <result property="code"    column="code"    />
         <result property="description"    column="description"    />
-        <result property="isActive"    column="is_active"    />
+        <result property="isActiveCustomer"    column="is_active_customer"    />
         <result property="createdAt"    column="created_at"    />
         <result property="updatedAt"    column="updated_at"    />
     </resultMap>
 
     <sql id="selectWorkCustomerVo">
-        select customer_id, name, code, description, is_active, created_at, updated_at from work_customer
+        select customer_id, customer_name, code, description, is_active_customer, created_at, updated_at from work_customer
     </sql>
 
     <select id="selectWorkCustomerList" parameterType="WorkCustomer" resultMap="WorkCustomerResult">
         <include refid="selectWorkCustomerVo"/>
         <where>  
-            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="customerName != null  and customerName != ''"> and customer_name like concat('%', #{customerName}, '%')</if>
             <if test="code != null  and code != ''"> and code = #{code}</if>
             <if test="description != null  and description != ''"> and description = #{description}</if>
-            <if test="isActive != null "> and is_active = #{isActive}</if>
+            <if test="isActiveCustomer != null "> and is_active_customer = #{isActiveCustomer}</if>
             <if test="createdAt != null "> and created_at = #{createdAt}</if>
             <if test="updatedAt != null "> and updated_at = #{updatedAt}</if>
         </where>
@@ -38,18 +38,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertWorkCustomer" parameterType="WorkCustomer" useGeneratedKeys="true" keyProperty="customerId">
         insert into work_customer
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="name != null and name != ''">name,</if>
+            <if test="customerName != null">customer_name,</if>
             <if test="code != null and code != ''">code,</if>
             <if test="description != null">description,</if>
-            <if test="isActive != null">is_active,</if>
+            <if test="isActiveCustomer != null">is_active_customer,</if>
             <if test="createdAt != null">created_at,</if>
             <if test="updatedAt != null">updated_at,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="name != null and name != ''">#{name},</if>
+            <if test="customerName != null">#{customerName},</if>
             <if test="code != null and code != ''">#{code},</if>
             <if test="description != null">#{description},</if>
-            <if test="isActive != null">#{isActive},</if>
+            <if test="isActiveCustomer != null">#{isActiveCustomer},</if>
             <if test="createdAt != null">#{createdAt},</if>
             <if test="updatedAt != null">#{updatedAt},</if>
          </trim>
@@ -58,10 +58,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateWorkCustomer" parameterType="WorkCustomer">
         update work_customer
         <trim prefix="SET" suffixOverrides=",">
-            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="customerName != null">customer_name = #{customerName},</if>
             <if test="code != null and code != ''">code = #{code},</if>
             <if test="description != null">description = #{description},</if>
-            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="isActiveCustomer != null">is_active_customer = #{isActiveCustomer},</if>
             <if test="createdAt != null">created_at = #{createdAt},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </trim>

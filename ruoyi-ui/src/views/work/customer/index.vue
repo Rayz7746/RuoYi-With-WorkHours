@@ -1,14 +1,14 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="90px" class="customer-search">
-      <el-form-item label="客户名称" prop="name">
-        <el-input v-model="queryParams.name" placeholder="请输入客户名称，如“专网”" clearable @keyup.enter="handleQuery" />
+      <el-form-item label="客户名称" prop="customerName">
+        <el-input v-model="queryParams.customerName" placeholder="请输入客户名称，如“专网”" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="客户代码" prop="code">
         <el-input v-model="queryParams.code" placeholder="请输入客户代码，如“ZW”" clearable @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="是否启用" prop="isActive">
-        <el-select v-model="queryParams.isActive" placeholder="是否启用" clearable>
+      <el-form-item label="是否启用" prop="isActiveCustomer">
+        <el-select v-model="queryParams.isActiveCustomer" placeholder="是否启用" clearable>
           <el-option label="启用" :value="1" />
           <el-option label="停用" :value="0" />
         </el-select>
@@ -63,13 +63,13 @@
 
     <el-table v-loading="loading" :data="customerList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="客户名称" align="center" prop="name" />
+      <el-table-column label="客户名称" align="center" prop="customerName" />
       <el-table-column label="客户代码" align="center" prop="code" />
       <el-table-column label="客户描述" align="center" prop="description" />
-      <el-table-column label="是否启用" align="center" prop="isActive" width="100">
+      <el-table-column label="是否启用" align="center" prop="isActiveCustomer" width="100">
         <template #default="scope">
           <el-switch
-            v-model="scope.row.isActive"
+            v-model="scope.row.isActiveCustomer"
             :active-value="1"
             :inactive-value="0"
             :loading="scope.row.__switchLoading || false"
@@ -111,8 +111,8 @@
       <el-form ref="customerRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="客户名称" prop="name">
-              <el-input v-model="form.name" placeholder="请输入客户名称，如“专网”" />
+            <el-form-item label="客户名称" prop="customerName">
+              <el-input v-model="form.customerName" placeholder="请输入客户名称，如“专网”" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -126,8 +126,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="是否启用" prop="isActive">
-              <el-radio-group v-model="form.isActive">
+            <el-form-item label="是否启用" prop="isActiveCustomer">
+              <el-radio-group v-model="form.isActiveCustomer">
                 <el-radio :label="1">启用</el-radio>
                 <el-radio :label="0">停用</el-radio>
               </el-radio-group>
@@ -165,19 +165,19 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    name: null,
+    customerName: null,
     code: null,
     description: null,
-    isActive: null
+    isActiveCustomer: null
   },
   rules: {
-    name: [
+    customerName: [
       { required: true, message: '客户名称，如“专网”不能为空', trigger: 'blur' }
     ],
     code: [
       { required: true, message: '客户代码，如“ZW”不能为空', trigger: 'blur' }
     ],
-    isActive: [
+    isActiveCustomer: [
       { required: true, message: '是否启用不能为空', trigger: 'change' }
     ]
   }
@@ -191,7 +191,7 @@ function getList() {
   listCustomer(queryParams.value).then(response => {
     customerList.value = (response.rows || []).map(r => ({
       ...r,
-      isActive: r.isActive === 1 || r.isActive === '1' ? 1 : 0
+      isActiveCustomer: r.isActiveCustomer === 1 || r.isActiveCustomer === '1' ? 1 : 0
     }))
     total.value = response.total
     loading.value = false
@@ -208,10 +208,10 @@ function cancel() {
 function reset() {
   form.value = {
     customerId: null,
-    name: null,
+    customerName: null,
     code: null,
     description: null,
-    isActive: 1
+    isActiveCustomer: 1
   }
   proxy.resetForm("customerRef")
 }
@@ -250,7 +250,7 @@ function handleUpdate(row) {
     const d = response.data || {}
     form.value = {
       ...d,
-      isActive: d.isActive === 1 || d.isActive === '1' ? 1 : 0
+      isActiveCustomer: d.isActiveCustomer === 1 || d.isActiveCustomer === '1' ? 1 : 0
     }
     open.value = true
     title.value = "修改客户信息"
@@ -262,7 +262,7 @@ function submitForm() {
   proxy.$refs["customerRef"].validate(valid => {
     if (valid) {
       const payload = { ...form.value }
-      payload.isActive = Number(payload.isActive)
+      payload.isActiveCustomer = Number(payload.isActiveCustomer)
       delete payload.createdAt
       delete payload.updatedAt
       if (payload.customerId != null) {
@@ -302,18 +302,18 @@ function handleExport() {
 
 // 仅在用户点击时触发，返回 boolean/Promise<boolean>
 function beforeToggleActive(row) {
-  const next = row.isActive === 1 ? 0 : 1
+  const next = row.isActiveCustomer === 1 ? 0 : 1
   const text = next === 1 ? '启用' : '停用'
   return new Promise((resolve) => {
-    proxy.$modal.confirm(`确认要"${text}"客户"${row.name || row.customerId}"吗?`)
+    proxy.$modal.confirm(`确认要"${text}"客户"${row.customerName || row.customerId}"吗?`)
       .then(() => {
         row.__switchLoading = true
         const payload = {
           customerId: row.customerId,
-          name: row.name,
+          customerName: row.customerName,
           code: row.code,
           description: row.description,
-          isActive: next
+          isActiveCustomer: next
         }
         return updateCustomer(payload)
       })

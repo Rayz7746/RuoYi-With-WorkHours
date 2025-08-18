@@ -22,14 +22,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="WorkCustomer" id="customerResult">
         <result property="customerId"    column="customer_id"    />
-        <result property="name"    column="name"    />
+        <result property="customerName"    column="customer_name"    />
     </resultMap>
 
 
 <!--    p for WorkProject; c for WorkCustomer; u for User-->
     <sql id="selectWorkProjectVo">
         select p.project_id, p.name, p.code, p.customer_id, p.project_manager_id, p.description, p.contact_person, p.is_default, p.is_billable, p.is_active, p.created_at, p.updated_at,
-        c.customer_id, c.name
+        c.customer_id, c.customer_name
         from work_project p
             left join work_customer c on p.customer_id = c.customer_id
 

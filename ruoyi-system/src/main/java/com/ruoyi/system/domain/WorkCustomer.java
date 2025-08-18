@@ -22,7 +22,7 @@ public class WorkCustomer extends BaseEntity
 
     /** 客户名称，如"专网" */
     @Excel(name = "客户名称", width = 30)
-    private String name;
+    private String customerName;
 
     /** 客户代码，如"ZW" */
     @Excel(name = "客户代码", width = 30)
@@ -34,7 +34,7 @@ public class WorkCustomer extends BaseEntity
 
     /** 是否激活，1表示激活，0表示不激活 */
     @Excel(name = "是否启用", readConverterExp = "1=启用,0=未启用")
-    private Integer isActive;
+    private Integer isActiveCustomer;
 
     /** 创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -45,73 +45,72 @@ public class WorkCustomer extends BaseEntity
     @JsonFormat(pattern = "yyyy-MM-dd")
 //    @Excel(name = "更新时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date updatedAt;
-
-    public void setCustomerId(Long customerId) 
+    public void setCustomerId(Long customerId)
     {
         this.customerId = customerId;
     }
 
-    public Long getCustomerId() 
+    public Long getCustomerId()
     {
         return customerId;
     }
 
-    public void setName(String name) 
+    public void setCustomerName(String customerName)
     {
-        this.name = name;
+        this.customerName = customerName;
     }
 
-    public String getName() 
+    public String getCustomerName()
     {
-        return name;
+        return customerName;
     }
 
-    public void setCode(String code) 
+    public void setCode(String code)
     {
         this.code = code;
     }
 
-    public String getCode() 
+    public String getCode()
     {
         return code;
     }
 
-    public void setDescription(String description) 
+    public void setDescription(String description)
     {
         this.description = description;
     }
 
-    public String getDescription() 
+    public String getDescription()
     {
         return description;
     }
 
-    public void setIsActive(Integer isActive) 
+    public void setIsActiveCustomer(Integer isActiveCustomer)
     {
-        this.isActive = isActive;
+        this.isActiveCustomer = isActiveCustomer;
     }
 
-    public Integer getIsActive() 
+    public Integer getIsActiveCustomer()
     {
-        return isActive;
+        return isActiveCustomer;
     }
 
-    public void setCreatedAt(Date createdAt) 
+    public void setCreatedAt(Date createdAt)
     {
         this.createdAt = createdAt;
     }
 
-    public Date getCreatedAt() 
+    public Date getCreatedAt()
     {
         return createdAt;
     }
 
-    public void setUpdatedAt(Date updatedAt) 
+    public void setUpdatedAt(Date updatedAt)
     {
         this.updatedAt = updatedAt;
     }
 
-    public Date getUpdatedAt() 
+    public Date getUpdatedAt()
     {
         return updatedAt;
     }
@@ -119,13 +118,13 @@ public class WorkCustomer extends BaseEntity
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("customerId", getCustomerId())
-            .append("name", getName())
-            .append("code", getCode())
-            .append("description", getDescription())
-            .append("isActive", getIsActive())
-            .append("createdAt", getCreatedAt())
-            .append("updatedAt", getUpdatedAt())
-            .toString();
+                .append("customerId", getCustomerId())
+                .append("customerName", getCustomerName())
+                .append("code", getCode())
+                .append("description", getDescription())
+                .append("isActiveCustomer", getIsActiveCustomer())
+                .append("createdAt", getCreatedAt())
+                .append("updatedAt", getUpdatedAt())
+                .toString();
     }
 }

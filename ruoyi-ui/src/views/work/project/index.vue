@@ -123,7 +123,7 @@
       <el-table-column label="项目代码" align="center" prop="code" />
       <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
 
-      <el-table-column label="关联客户" align="center" prop="customer.name" />
+      <el-table-column label="关联客户" align="center" prop="customer.customerName" />
 
       <el-table-column label="项目负责人ID" align="center" prop="projectManagerId" />
       <el-table-column label="项目描述" align="center" prop="description" />
