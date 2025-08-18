@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.work;
 
 import java.util.List;
 
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.system.domain.WorkCustomer;
 import com.ruoyi.system.service.ISysUserService;
 import com.ruoyi.system.service.IWorkCustomerService;
@@ -118,4 +119,13 @@ public class WorkProjectController extends BaseController
     {
         return success(workCustomerService.selectWorkCustomerList(customer));
     }
+
+    @PreAuthorize("@ss.hasPermi('work:project:list')")
+    @GetMapping("/projectManagerSelect")
+    public AjaxResult projectManagerSelect(SysUser user)
+    {
+        return success(sysUserService.selectUserList(user));
+    }
+
+
 }

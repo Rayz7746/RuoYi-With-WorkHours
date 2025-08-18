@@ -49,3 +49,10 @@ export function customerSelect() {
     method: 'get',
   })
 }
+
+export function projectManagerSelect() {
+  return request({
+    url: '/work/project/projectManagerSelect',
+    method: 'get',
+  })
+}

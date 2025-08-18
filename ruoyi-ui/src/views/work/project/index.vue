@@ -10,7 +10,7 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="项目代码" prop="code">
+      <el-form-item label="项目编码" prop="code">
         <el-input
           v-model="queryParams.code"
           :placeholder="searchCodePlaceholder"
@@ -18,7 +18,7 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="关联客户ID" prop="customerId">
+      <el-form-item label="关联客户" prop="customerId">
         <el-select-v2
           v-model="queryParams.customerId"
           :options="customerOptionsV2"
@@ -28,12 +28,14 @@
           style="width: 260px"
         />
       </el-form-item>
-      <el-form-item label="项目负责人ID" prop="projectManagerId">
-        <el-input
+      <el-form-item label="项目负责人" prop="projectManagerId">
+        <el-select-v2
           v-model="queryParams.projectManagerId"
-          placeholder="请输入项目负责人ID(关联sys_user.user_id)"
+          :options="projectManagerOptionsV2"
+          filterable
           clearable
-          @keyup.enter="handleQuery"
+          placeholder="请选择项目负责人"
+          style="width: 260px"
         />
       </el-form-item>
       <el-form-item label="联系人" prop="contactPerson">
@@ -54,20 +56,20 @@
       </el-form-item>
 
       <!-- 搜索：是否默认项目 下拉 -->
-      <el-form-item label="是否默认项目" prop="isDefault">
+      <!-- <el-form-item label="是否默认项目" prop="isDefault">
         <el-select v-model="queryParams.isDefault" placeholder="是否默认项目" clearable>
           <el-option label="是" :value="1" />
           <el-option label="否" :value="0" />
         </el-select>
-      </el-form-item>
+      </el-form-item> -->
 
       <!-- 搜索：是否可计费 下拉 -->
-      <el-form-item label="是否可计费" prop="isBillable">
+      <!-- <el-form-item label="是否可计费" prop="isBillable">
         <el-select v-model="queryParams.isBillable" placeholder="是否可计费" clearable>
           <el-option label="可计费" :value="1" />
           <el-option label="不可计费" :value="0" />
         </el-select>
-      </el-form-item>
+      </el-form-item> -->
 
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -122,7 +124,7 @@
     <el-table v-loading="loading" :data="projectList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="项目名称" align="center" prop="name" />
-      <el-table-column label="项目代码" align="center" prop="code" />
+      <el-table-column label="项目编码" align="center" prop="code" />
       <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
       <el-table-column label="关联客户" align="center" prop="customer.customerName" />
       <!-- <el-table-column label="项目负责人ID" align="center" prop="projectManagerId" /> -->
@@ -207,13 +209,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="项目代码" prop="code">
+            <el-form-item label="项目编码" prop="code">
               <el-input v-model="form.code" :placeholder="formCodePlaceholder" />
             </el-form-item>
           </el-col>
 
           <el-col :span="12">
-            <el-form-item label="关联客户ID" prop="customerId">
+            <el-form-item label="关联客户" prop="customerId">
               <el-select-v2
                 v-model="form.customerId"
                 :options="customerOptionsV2"
@@ -225,8 +227,15 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="项目负责人ID" prop="projectManagerId">
-              <el-input v-model="form.projectManagerId" placeholder="请输入项目负责人ID(关联sys_user.user_id)" />
+            <el-form-item label="项目负责人" prop="projectManagerId">
+              <el-select-v2
+                v-model="form.projectManagerId"
+                :options="projectManagerOptionsV2"
+                filterable
+                clearable
+                placeholder="请选择项目负责人"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
 
@@ -283,7 +292,7 @@
 </template>
 
 <script setup name="Project">
-import { listProject, getProject, delProject, addProject, updateProject, customerSelect } from "@/api/work/project"
+import { listProject, getProject, delProject, addProject, updateProject, customerSelect, projectManagerSelect } from "@/api/work/project"
 
 const { proxy } = getCurrentInstance()
 
@@ -299,6 +308,8 @@ const title = ref("")
 const isCreate = ref(false)
 const customerOptions = ref(undefined)
 const enabledCustomerOptions = ref(undefined)
+const projectManagerOptions = ref(undefined)
+const enabledProjectManagerOptions = ref(undefined)
 
 const data = reactive({
   form: {},
@@ -320,14 +331,17 @@ const data = reactive({
       { required: true, message: '项目名称不能为空', trigger: 'blur' }
     ],
     code: [
-      { required: true, message: '项目代码不能为空', trigger: 'blur' }
+      { required: true, message: '项目编码不能为空', trigger: 'blur' }
     ],
     customerId: [
-      { required: true, message: '关联客户ID不能为空', trigger: 'blur' }
+      { required: true, message: '关联客户不能为空', trigger: 'blur' }
     ],
     isActive: [
       { required: true, message: '是否启用不能为空', trigger: 'change' }
-    ]
+    ],
+    projectManagerId: [
+      { required: true, message: '项目负责人不能为空', trigger: 'blur' }
+    ],
   }
 })
 
@@ -335,9 +349,9 @@ const { queryParams, form, rules } = toRefs(data)
 
 // 占位文案
 const searchNamePlaceholder = computed(() => '请输入项目名称，如“AI - 人工智能”')
-const searchCodePlaceholder = computed(() => '请输入项目代码，如“AI”')
+const searchCodePlaceholder = computed(() => '请输入项目编码，如“AI”')
 const formNamePlaceholder = computed(() => isCreate.value ? '请输入项目名称，如“AI - 人工智能”' : '请输入项目名称')
-const formCodePlaceholder = computed(() => isCreate.value ? '请输入项目代码，如“AI”' : '请输入项目代码')
+const formCodePlaceholder = computed(() => isCreate.value ? '请输入项目编码，如“AI”' : '请输入项目编码')
 
 // 将后端数据映射为 el-select-v2 需要的 { value, label, disabled } 结构
 const customerOptionsV2 = computed(() => {
@@ -347,6 +361,18 @@ const customerOptionsV2 = computed(() => {
       value: c.customerId ?? c.value,
       label: c.customerName ?? c.label,
       disabled: c.isActiveCustomer === 0 || c.disabled === true
+    }))
+    .filter(o => o.value != null && o.label != null)
+})
+// 新增：项目经理下拉的选项映射
+const projectManagerOptionsV2 = computed(() => {
+  const list = enabledProjectManagerOptions.value || []
+  return list
+    .map(u => ({
+      value: u.userId ?? u.value,            // 兼容 userId/value
+      label: u.nickName ?? u.label,          // 兼容 nickName/label
+      // 常见的停用标记：disabled=true 或 status=1（RuoYi: 0=正常,1=停用）或 isActive=false/0
+      disabled: u.disabled === true || u.status === 1 || u.status === '1'
     }))
     .filter(o => o.value != null && o.label != null)
 })
@@ -368,6 +394,23 @@ function filterDisabledCustomer(customerList) {
     else {
       return false
     }
+  })
+}
+
+/* 自定义项目经理下拉菜单 */
+function getProjectManagerSelectOption() {
+  projectManagerSelect().then(response => {
+    projectManagerOptions.value = response.data || []
+    // 深拷贝防御性过滤
+    enabledProjectManagerOptions.value = filterDisabledProjectManager(JSON.parse(JSON.stringify(projectManagerOptions.value)))
+  })
+}
+
+/** 过滤禁用的项目经理 */
+function filterDisabledProjectManager(projectManagerList) {
+  return (projectManagerList || []).filter(pm => {
+    const disabled = pm?.disabled === true || pm?.status === 1 || pm?.status === '1'
+    return !disabled
   })
 }
 
@@ -569,6 +612,7 @@ function beforeToggleFlag(row, field, onText, offText) {
 onMounted(() => {
   getList()
   getCustomerSelectOption()
+  getProjectManagerSelectOption()
 })
 </script>
 

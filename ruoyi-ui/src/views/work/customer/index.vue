@@ -4,8 +4,8 @@
       <el-form-item label="客户名称" prop="customerName">
         <el-input v-model="queryParams.customerName" placeholder="请输入客户名称，如“专网”" clearable @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="客户代码" prop="code">
-        <el-input v-model="queryParams.code" placeholder="请输入客户代码，如“ZW”" clearable @keyup.enter="handleQuery" />
+      <el-form-item label="客户编码" prop="code">
+        <el-input v-model="queryParams.code" placeholder="请输入客户编码，如“ZW”" clearable @keyup.enter="handleQuery" />
       </el-form-item>
       <el-form-item label="是否启用" prop="isActiveCustomer">
         <el-select v-model="queryParams.isActiveCustomer" placeholder="是否启用" clearable>
@@ -64,7 +64,7 @@
     <el-table v-loading="loading" :data="customerList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="客户名称" align="center" prop="customerName" />
-      <el-table-column label="客户代码" align="center" prop="code" />
+      <el-table-column label="客户编码" align="center" prop="code" />
       <el-table-column label="客户描述" align="center" prop="description" />
       <el-table-column label="是否启用" align="center" prop="isActiveCustomer" width="100">
         <template #default="scope">
@@ -116,8 +116,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="客户代码" prop="code">
-              <el-input v-model="form.code" placeholder="请输入客户代码，如“ZW”" />
+            <el-form-item label="客户编码" prop="code">
+              <el-input v-model="form.code" placeholder="请输入客户编码，如“ZW”" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -175,7 +175,7 @@ const data = reactive({
       { required: true, message: '客户名称，如“专网”不能为空', trigger: 'blur' }
     ],
     code: [
-      { required: true, message: '客户代码，如“ZW”不能为空', trigger: 'blur' }
+      { required: true, message: '客户编码，如“ZW”不能为空', trigger: 'blur' }
     ],
     isActiveCustomer: [
       { required: true, message: '是否启用不能为空', trigger: 'change' }
