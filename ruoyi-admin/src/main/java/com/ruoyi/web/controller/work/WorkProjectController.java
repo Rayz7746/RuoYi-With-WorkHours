@@ -1,6 +1,10 @@
 package com.ruoyi.web.controller.work;
 
 import java.util.List;
+
+import com.ruoyi.system.domain.WorkCustomer;
+import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.system.service.IWorkCustomerService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +37,12 @@ public class WorkProjectController extends BaseController
 {
     @Autowired
     private IWorkProjectService workProjectService;
+
+    @Autowired
+    private IWorkCustomerService workCustomerService;
+
+    @Autowired
+    private ISysUserService sysUserService;
 
     /**
      * 查询项目信息列表
@@ -100,5 +110,12 @@ public class WorkProjectController extends BaseController
     public AjaxResult remove(@PathVariable Long[] projectIds)
     {
         return toAjax(workProjectService.deleteWorkProjectByProjectIds(projectIds));
+    }
+
+    @PreAuthorize("@ss.hasPermi('work:project:list')")
+    @GetMapping("/customerSelect")
+    public AjaxResult customerSelect(WorkCustomer customer)
+    {
+        return success(workCustomerService.selectWorkCustomerList(customer));
     }
 }

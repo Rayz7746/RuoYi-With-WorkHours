@@ -42,3 +42,10 @@ export function delProject(projectId) {
     method: 'delete'
   })
 }
+
+export function customerSelect() {
+  return request({
+    url: '/work/project/customerSelect',
+    method: 'get',
+  })
+}

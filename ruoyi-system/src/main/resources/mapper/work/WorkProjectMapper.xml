@@ -43,7 +43,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.user_id, u.user_name, u.nick_name
 
         from work_project p
-            left join work_customer c on p.customer_id = c.customer_id
+            inner join work_customer c on p.customer_id = c.customer_id and c.is_active_customer = 1
             left join sys_user u on p.project_manager_id = u.user_id
 
     </sql>

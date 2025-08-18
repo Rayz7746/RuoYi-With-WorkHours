@@ -19,11 +19,13 @@
         />
       </el-form-item>
       <el-form-item label="关联客户ID" prop="customerId">
-        <el-input
+        <el-select-v2
           v-model="queryParams.customerId"
-          placeholder="请输入关联客户ID"
+          :options="customerOptionsV2"
+          filterable
           clearable
-          @keyup.enter="handleQuery"
+          placeholder="请选择关联客户"
+          style="width: 260px"
         />
       </el-form-item>
       <el-form-item label="项目负责人ID" prop="projectManagerId">
@@ -124,7 +126,7 @@
       <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
       <el-table-column label="关联客户" align="center" prop="customer.customerName" />
       <!-- <el-table-column label="项目负责人ID" align="center" prop="projectManagerId" /> -->
-      <el-table-column label="项目负责人ID" align="center" prop="user.nickName" />
+      <el-table-column label="项目负责人" align="center" prop="user.nickName" />
       <el-table-column label="项目描述" align="center" prop="description" />
       <el-table-column label="联系人" align="center" prop="contactPerson" />
 
@@ -212,7 +214,14 @@
 
           <el-col :span="12">
             <el-form-item label="关联客户ID" prop="customerId">
-              <el-input v-model="form.customerId" placeholder="请输入关联客户ID" />
+              <el-select-v2
+                v-model="form.customerId"
+                :options="customerOptionsV2"
+                filterable
+                clearable
+                placeholder="请选择关联客户"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -274,7 +283,7 @@
 </template>
 
 <script setup name="Project">
-import { listProject, getProject, delProject, addProject, updateProject } from "@/api/work/project"
+import { listProject, getProject, delProject, addProject, updateProject, customerSelect } from "@/api/work/project"
 
 const { proxy } = getCurrentInstance()
 
@@ -288,6 +297,8 @@ const multiple = ref(true)
 const total = ref(0)
 const title = ref("")
 const isCreate = ref(false)
+const customerOptions = ref(undefined)
+const enabledCustomerOptions = ref(undefined)
 
 const data = reactive({
   form: {},
@@ -327,6 +338,39 @@ const searchNamePlaceholder = computed(() => '请输入项目名称，如“AI -
 const searchCodePlaceholder = computed(() => '请输入项目代码，如“AI”')
 const formNamePlaceholder = computed(() => isCreate.value ? '请输入项目名称，如“AI - 人工智能”' : '请输入项目名称')
 const formCodePlaceholder = computed(() => isCreate.value ? '请输入项目代码，如“AI”' : '请输入项目代码')
+
+// 将后端数据映射为 el-select-v2 需要的 { value, label, disabled } 结构
+const customerOptionsV2 = computed(() => {
+  const list = enabledCustomerOptions.value || []
+  return list
+    .map(c => ({
+      value: c.customerId ?? c.value,
+      label: c.customerName ?? c.label,
+      disabled: c.isActiveCustomer === 0 || c.disabled === true
+    }))
+    .filter(o => o.value != null && o.label != null)
+})
+
+/* 自定义客户下拉菜单 */
+function getCustomerSelectOption() {
+  customerSelect().then(response => {
+    customerOptions.value = response.data
+    enabledCustomerOptions.value = filterDisabledCustomer(JSON.parse(JSON.stringify(response.data)))
+  })
+}
+
+/** 过滤禁用的客户 */
+function filterDisabledCustomer(customerList) {
+  return customerList.filter(customer => {
+    if (customer.isActiveCustomer) {
+      return true
+    }
+    else {
+      return false
+    }
+  })
+}
+
 
 /** 查询项目信息列表 */
 function getList() {
@@ -522,7 +566,10 @@ function beforeToggleFlag(row, field, onText, offText) {
   })
 }
 
-getList()
+onMounted(() => {
+  getList()
+  getCustomerSelectOption()
+})
 </script>
 
 <style scoped>
