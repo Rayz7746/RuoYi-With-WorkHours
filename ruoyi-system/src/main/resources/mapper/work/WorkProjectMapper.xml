@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.WorkProjectMapper">
+    
+    <resultMap type="WorkProject" id="WorkProjectResult">
+        <result property="projectId"    column="project_id"    />
+        <result property="name"    column="name"    />
+        <result property="code"    column="code"    />
+        <result property="customerId"    column="customer_id"    />
+        <result property="projectManagerId"    column="project_manager_id"    />
+        <result property="description"    column="description"    />
+        <result property="contactPerson"    column="contact_person"    />
+        <result property="isDefault"    column="is_default"    />
+        <result property="isBillable"    column="is_billable"    />
+        <result property="isActive"    column="is_active"    />
+        <result property="createdAt"    column="created_at"    />
+        <result property="updatedAt"    column="updated_at"    />
+    </resultMap>
+
+    <sql id="selectWorkProjectVo">
+        select project_id, name, code, customer_id, project_manager_id, description, contact_person, is_default, is_billable, is_active, created_at, updated_at from work_project
+    </sql>
+
+    <select id="selectWorkProjectList" parameterType="WorkProject" resultMap="WorkProjectResult">
+        <include refid="selectWorkProjectVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="code != null  and code != ''"> and code = #{code}</if>
+            <if test="customerId != null "> and customer_id = #{customerId}</if>
+            <if test="projectManagerId != null "> and project_manager_id = #{projectManagerId}</if>
+            <if test="description != null  and description != ''"> and description = #{description}</if>
+            <if test="contactPerson != null  and contactPerson != ''"> and contact_person = #{contactPerson}</if>
+            <if test="isDefault != null "> and is_default = #{isDefault}</if>
+            <if test="isBillable != null "> and is_billable = #{isBillable}</if>
+            <if test="isActive != null "> and is_active = #{isActive}</if>
+            <if test="createdAt != null "> and created_at = #{createdAt}</if>
+            <if test="updatedAt != null "> and updated_at = #{updatedAt}</if>
+        </where>
+    </select>
+    
+    <select id="selectWorkProjectByProjectId" parameterType="Long" resultMap="WorkProjectResult">
+        <include refid="selectWorkProjectVo"/>
+        where project_id = #{projectId}
+    </select>
+
+    <insert id="insertWorkProject" parameterType="WorkProject" useGeneratedKeys="true" keyProperty="projectId">
+        insert into work_project
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="code != null and code != ''">code,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="projectManagerId != null">project_manager_id,</if>
+            <if test="description != null">description,</if>
+            <if test="contactPerson != null">contact_person,</if>
+            <if test="isDefault != null">is_default,</if>
+            <if test="isBillable != null">is_billable,</if>
+            <if test="isActive != null">is_active,</if>
+            <if test="createdAt != null">created_at,</if>
+            <if test="updatedAt != null">updated_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="code != null and code != ''">#{code},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="projectManagerId != null">#{projectManagerId},</if>
+            <if test="description != null">#{description},</if>
+            <if test="contactPerson != null">#{contactPerson},</if>
+            <if test="isDefault != null">#{isDefault},</if>
+            <if test="isBillable != null">#{isBillable},</if>
+            <if test="isActive != null">#{isActive},</if>
+            <if test="createdAt != null">#{createdAt},</if>
+            <if test="updatedAt != null">#{updatedAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateWorkProject" parameterType="WorkProject">
+        update work_project
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="code != null and code != ''">code = #{code},</if>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="projectManagerId != null">project_manager_id = #{projectManagerId},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="contactPerson != null">contact_person = #{contactPerson},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="isBillable != null">is_billable = #{isBillable},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </trim>
+        where project_id = #{projectId}
+    </update>
+
+    <delete id="deleteWorkProjectByProjectId" parameterType="Long">
+        delete from work_project where project_id = #{projectId}
+    </delete>
+
+    <delete id="deleteWorkProjectByProjectIds" parameterType="String">
+        delete from work_project where project_id in 
+        <foreach item="projectId" collection="array" open="(" separator="," close=")">
+            #{projectId}
+        </foreach>
+    </delete>
+</mapper>
