@@ -53,15 +53,15 @@ public class WorkProject extends BaseEntity
     private String contactPerson;
 
     /** 是否默认项目，0否1是 */
-    @Excel(name = "是否为默认项目", readConverterExp = "1=是,0=否", width = 30)
+    @Excel(name = "是否为默认项目", readConverterExp = "1=是,0=否", width = 15)
     private Integer isDefault;
 
     /** 是否可计费，0否1是 */
-    @Excel(name = "是否为可计费项目", readConverterExp = "1=是,0=否", width = 30)
+    @Excel(name = "是否为可计费项目", readConverterExp = "1=是,0=否", width = 15)
     private Integer isBillable;
 
     /** 是否激活，0否1是 */
-    @Excel(name = "是否启用", readConverterExp = "1=启用,0=未启用", width = 30)
+    @Excel(name = "是否启用", readConverterExp = "1=启用,0=未启用", width = 15)
     private Integer isActive;
 
     /** 创建时间 */
@@ -229,6 +229,7 @@ public class WorkProject extends BaseEntity
             .append("createdAt", getCreatedAt())
             .append("updatedAt", getUpdatedAt())
             .append("customer", getCustomer() != null ? getCustomer().getCustomerName() : null)
+            .append("user", getUser() != null ? getUser().getNickName() : null)
             .toString();
     }
 }

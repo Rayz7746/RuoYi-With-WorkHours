@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.WorkAssignmentMapper">
+    
+    <resultMap type="WorkAssignment" id="WorkAssignmentResult">
+        <result property="assignmentId"    column="assignment_id"    />
+        <result property="projectId"    column="project_id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="role"    column="role"    />
+        <result property="isActiveAssignment"    column="is_active_assignment"    />
+        <result property="dateStart"    column="date_start"    />
+        <result property="dateEnd"    column="date_end"    />
+        <result property="createAt"    column="create_at"    />
+        <result property="updateAt"    column="update_at"    />
+    </resultMap>
+
+    <sql id="selectWorkAssignmentVo">
+        select assignment_id, project_id, user_id, role, is_active_assignment, date_start, date_end, create_at, update_at from work_assignment
+    </sql>
+
+    <select id="selectWorkAssignmentList" parameterType="WorkAssignment" resultMap="WorkAssignmentResult">
+        <include refid="selectWorkAssignmentVo"/>
+        <where>  
+            <if test="projectId != null "> and project_id = #{projectId}</if>
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="role != null  and role != ''"> and role = #{role}</if>
+            <if test="isActiveAssignment != null "> and is_active_assignment = #{isActiveAssignment}</if>
+            <if test="dateStart != null "> and date_start = #{dateStart}</if>
+            <if test="dateEnd != null "> and date_end = #{dateEnd}</if>
+            <if test="createAt != null "> and create_at = #{createAt}</if>
+            <if test="updateAt != null "> and update_at = #{updateAt}</if>
+        </where>
+    </select>
+    
+    <select id="selectWorkAssignmentByAssignmentId" parameterType="Long" resultMap="WorkAssignmentResult">
+        <include refid="selectWorkAssignmentVo"/>
+        where assignment_id = #{assignmentId}
+    </select>
+
+    <insert id="insertWorkAssignment" parameterType="WorkAssignment" useGeneratedKeys="true" keyProperty="assignmentId">
+        insert into work_assignment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="projectId != null">project_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="role != null">role,</if>
+            <if test="isActiveAssignment != null">is_active_assignment,</if>
+            <if test="dateStart != null">date_start,</if>
+            <if test="dateEnd != null">date_end,</if>
+            <if test="createAt != null">create_at,</if>
+            <if test="updateAt != null">update_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="projectId != null">#{projectId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="role != null">#{role},</if>
+            <if test="isActiveAssignment != null">#{isActiveAssignment},</if>
+            <if test="dateStart != null">#{dateStart},</if>
+            <if test="dateEnd != null">#{dateEnd},</if>
+            <if test="createAt != null">#{createAt},</if>
+            <if test="updateAt != null">#{updateAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateWorkAssignment" parameterType="WorkAssignment">
+        update work_assignment
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="projectId != null">project_id = #{projectId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="isActiveAssignment != null">is_active_assignment = #{isActiveAssignment},</if>
+            <if test="dateStart != null">date_start = #{dateStart},</if>
+            <if test="dateEnd != null">date_end = #{dateEnd},</if>
+            <if test="createAt != null">create_at = #{createAt},</if>
+            <if test="updateAt != null">update_at = #{updateAt},</if>
+        </trim>
+        where assignment_id = #{assignmentId}
+    </update>
+
+    <delete id="deleteWorkAssignmentByAssignmentId" parameterType="Long">
+        delete from work_assignment where assignment_id = #{assignmentId}
+    </delete>
+
+    <delete id="deleteWorkAssignmentByAssignmentIds" parameterType="String">
+        delete from work_assignment where assignment_id in 
+        <foreach item="assignmentId" collection="array" open="(" separator="," close=")">
+            #{assignmentId}
+        </foreach>
+    </delete>
+</mapper>
