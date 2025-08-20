@@ -123,10 +123,10 @@
     <!-- 表格 -->
     <el-table v-loading="loading" :data="projectList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
+      <el-table-column label="关联客户" align="center" prop="customer.customerName" />
       <el-table-column label="项目名称" align="center" prop="name" />
       <el-table-column label="项目编码" align="center" prop="code" />
       <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
-      <el-table-column label="关联客户" align="center" prop="customer.customerName" />
       <!-- <el-table-column label="项目经理ID" align="center" prop="projectManagerId" /> -->
       <el-table-column label="项目经理" align="center" prop="user.nickName" />
       <el-table-column label="项目描述" align="center" prop="description" />

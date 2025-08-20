@@ -1,14 +1,26 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="90px" class="assignment-search">
-      <!-- 替换 project_id 输入为 项目 下拉（显示 project.name，提交 projectId） -->
+      <!-- 新增：客户 下拉，驱动项目联动（搜索区） -->
+      <el-form-item label="客户" prop="customerId">
+        <el-select-v2
+          v-model="queryParams.customerId"
+          :options="customerOptionsV2"
+          filterable
+          clearable
+          placeholder="请选择客户"
+          style="width: 260px"
+        />
+      </el-form-item>
+
+      <!-- 项目 下拉（仅显示所选客户的项目） -->
       <el-form-item label="项目" prop="projectId">
         <el-select-v2
           v-model="queryParams.projectId"
-          :options="projectOptionsV2"
+          :options="searchProjectOptionsV2"
           filterable
           clearable
-          placeholder="请选择项目"
+          placeholder="请先选择客户，再选择项目"
           style="width: 260px"
         />
       </el-form-item>
@@ -146,19 +158,34 @@
     <el-dialog :title="title" v-model="open" width="720px" append-to-body class="assignment-dialog">
       <el-form ref="assignmentRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="20">
+          <!-- 新增：客户 下拉（表单联动） -->
           <el-col :span="12">
-            <!-- 弹窗同样替换为下拉 -->
-            <el-form-item label="项目" prop="projectId">
+            <el-form-item label="客户">
               <el-select-v2
-                v-model="form.projectId"
-                :options="projectOptionsV2"
+                v-model="form.customerId"
+                :options="customerOptionsV2"
                 filterable
                 clearable
-                placeholder="请选择项目"
+                placeholder="请选择客户"
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
+
+          <!-- 项目（受客户选择联动约束） -->
+          <el-col :span="12">
+            <el-form-item label="项目" prop="projectId">
+              <el-select-v2
+                v-model="form.projectId"
+                :options="formProjectOptionsV2"
+                filterable
+                clearable
+                placeholder="请先选择客户，再选择项目"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+
           <!-- 替换：user_id 文本输入 -> 项目人员 下拉 -->
           <el-col :span="12">
             <el-form-item label="项目人员" prop="userId">
@@ -234,8 +261,8 @@
 </template>
 
 <script setup name="Assignment">
-import { listAssignment, getAssignment, delAssignment, addAssignment, updateAssignment, userSelect, projectNameSelect } from "@/api/work/assignment"
-import { nextTick } from "vue"
+import { listAssignment, getAssignment, delAssignment, addAssignment, updateAssignment, userSelect, projectNameSelect, customerSelect } from "@/api/work/assignment"
+import { ref, reactive, toRefs, computed, watch, getCurrentInstance, onMounted, nextTick } from "vue"  // 修正：显式引入
 
 const { proxy } = getCurrentInstance()
 
@@ -254,6 +281,7 @@ const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
+    customerId: null,       // 新增：搜索区客户
     projectId: null,
     userId: null,
     role: null,
@@ -263,7 +291,6 @@ const data = reactive({
     projectId: [{ required: true, message: "项目不能为空", trigger: "blur" }],
     userId: [{ required: true, message: "项目人员不能为空", trigger: "blur" }],
     isActiveAssignment: [{ required: true, message: "是否有效不能为空", trigger: "change" }],
-    // 替换为“按需必填 + 先后关系”合并校验
     dateStart: [{ validator: validateDateStart, trigger: "change" }],
     dateEnd:   [{ validator: validateDateEnd,   trigger: "change" }]
   }
@@ -327,6 +354,7 @@ function cancel() {
 function reset() {
   form.value = {
     assignmentId: null,
+    customerId: null,       // UI 辅助字段，用于项目联动
     projectId: null,
     userId: null,
     role: null,
@@ -371,12 +399,21 @@ function handleUpdate(row) {
   const _assignmentId = row?.assignmentId || ids.value
   getAssignment(_assignmentId).then(response => {
     const d = response.data || {}
+    const currentProject = d.project || {}
+    const derivedCustomerId = currentProject.customerId
+      ?? currentProject?.customer?.customerId
+      ?? null
+
     form.value = {
       ...d,
+      customerId: derivedCustomerId,
       isActiveAssignment: d.isActiveAssignment === 1 || d.isActiveAssignment === '1' ? 1 : 0,
       // 根据后端日期是否存在推断启用状态
       enableDate: (d.dateStart != null || d.dateEnd != null) ? 1 : 0
     }
+
+    // 加载该客户的项目列表，确保项目下拉可见当前项目
+    loadFormProjectsByCustomer(derivedCustomerId)
     open.value = true
     title.value = "修改项目任务分配关系"
   })
@@ -399,6 +436,7 @@ function submitForm() {
       delete payload.enableDate
       delete payload.createAt
       delete payload.updateAt
+      delete payload.customerId   // 仅联动用
 
       if (payload.assignmentId != null) {
         updateAssignment(payload).then(() => {
@@ -522,9 +560,104 @@ function filterDisabledProject(list) {
   return (list || []).filter(p => !(p?.isActive === 0 || p?.disabled === true))
 }
 
+// 搜索与表单都要用到的客户下拉
+const customerOptions = ref(undefined)
+const enabledCustomerOptions = ref(undefined)
+const customerOptionsV2 = computed(() => {
+  const list = enabledCustomerOptions.value || []
+  return list
+    .map(c => ({
+      value: c.customerId ?? c.value,
+      label: c.customerName ?? c.label,
+      disabled: c.isActiveCustomer === 0 || c.disabled === true
+    }))
+    .filter(o => o.value != null && o.label != null)
+})
+function getCustomerSelectOption() {
+  customerSelect().then(res => {
+    const list = res.data || []
+    customerOptions.value = list
+    enabledCustomerOptions.value = (list || []).filter(c => !(c?.isActiveCustomer === 0 || c?.disabled === true))
+  })
+}
+
+// 搜索区：项目选项（由 queryParams.customerId 驱动）
+const searchProjectOptions = ref([])
+const enabledSearchProjectOptions = ref([])
+const searchProjectOptionsV2 = computed(() => {
+  const list = enabledSearchProjectOptions.value || []
+  return list.map(p => ({
+    value: p.projectId ?? p.value,
+    label: p.name ?? p.label,
+    disabled: p.isActive === 0 || p.disabled === true || p.status === 0 || p.status === '0'
+  })).filter(o => o.value != null && o.label != null)
+})
+
+// 表单：项目选项（由 form.customerId 驱动）
+const formProjectOptions = ref([])                 // 新增
+const enabledFormProjectOptions = ref([])          // 新增
+const formProjectOptionsV2 = computed(() => {      // 新增
+  const list = enabledFormProjectOptions.value || []
+  return list.map(p => ({
+    value: p.projectId ?? p.value,
+    label: p.name ?? p.label,
+    disabled: p.isActive === 0 || p.disabled === true || p.status === 0 || p.status === '0'
+  })).filter(o => o.value != null && o.label != null)
+})
+
+// 预加载所有项目（不带 query，前端本地按 customer 过滤）
+const allProjects = ref([])
+function preloadAllProjects() {
+  projectNameSelect().then(res => {
+    allProjects.value = Array.isArray(res.data) ? res.data : []
+  })
+}
+
+// 工具：获取项目归属客户ID（兼容 project.customer.customerId）
+function getProjectCustomerId(p) {
+  return p?.customerId ?? p?.customer?.customerId ?? p?.customer?.id ?? null
+}
+
+// 搜索区：根据客户过滤
+function loadSearchProjectsByCustomer(customerId) {
+  if (!customerId) {
+    enabledSearchProjectOptions.value = []
+    return
+  }
+  const list = (allProjects.value || []).filter(p => String(getProjectCustomerId(p)) === String(customerId))
+  enabledSearchProjectOptions.value = list.filter(p => !(p?.isActive === 0 || p?.disabled === true || p?.status === 0 || p?.status === '0'))
+}
+
+// 表单：根据客户过滤
+function loadFormProjectsByCustomer(customerId) {
+  if (!customerId) {
+    enabledFormProjectOptions.value = []
+    return
+  }
+  const list = (allProjects.value || []).filter(p => String(getProjectCustomerId(p)) === String(customerId))
+  enabledFormProjectOptions.value = list.filter(p => !(p?.isActive === 0 || p?.disabled === true || p?.status === 0 || p?.status === '0'))
+}
+
+// 监听：搜索客户 -> 清空项目并加载客户项目
+watch(() => queryParams.value.customerId, (cid) => {
+  queryParams.value.projectId = null
+  loadSearchProjectsByCustomer(cid)
+})
+
+// 监听：表单客户 -> 清空项目并加载客户项目
+watch(() => form.value.customerId, (cid) => {
+  form.value.projectId = null
+  loadFormProjectsByCustomer(cid)
+})
+
+// handleUpdate 内已按 project.customer 兼容，这里保持不变
 onMounted(() => {
+  getCustomerSelectOption()
   getMemberSelectOption()
-  getProjectSelectOption()
+  preloadAllProjects()
+  if (queryParams.value.customerId) {
+    loadSearchProjectsByCustomer(queryParams.value.customerId)
+  }
 })
 getList()
 </script>

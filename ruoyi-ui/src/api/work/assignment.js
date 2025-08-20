@@ -50,10 +50,18 @@ export function userSelect() {
   })
 }
 
-// 新增：项目名称下拉（返回 { projectId, name, isActive } 列表）
+// 新增：客户下拉（返回 { customerId, customerName, isActiveCustomer } 列表）
+export function customerSelect() {
+  return request({
+    url: '/work/customer/customerSelect',
+    method: 'get',
+  })
+}
+
+// 调整：项目名称下拉，支持按客户筛选（query 可包含 customerId）
 export function projectNameSelect() {
   return request({
     url: '/work/assignment/projectNameSelect',
-    method: 'get',
+    method: 'get'
   })
 }
