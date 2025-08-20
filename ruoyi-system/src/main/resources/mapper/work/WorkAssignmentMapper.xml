@@ -66,14 +66,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateWorkAssignment" parameterType="WorkAssignment">
         update work_assignment
         <trim prefix="SET" suffixOverrides=",">
-            <if test="projectId != null">project_id = #{projectId},</if>
-            <if test="userId != null">user_id = #{userId},</if>
-            <if test="role != null">role = #{role},</if>
-            <if test="isActiveAssignment != null">is_active_assignment = #{isActiveAssignment},</if>
-            <if test="dateStart != null">date_start = #{dateStart},</if>
-            <if test="dateEnd != null">date_end = #{dateEnd},</if>
-            <if test="createAt != null">create_at = #{createAt},</if>
-            <if test="updateAt != null">update_at = #{updateAt},</if>
+            project_id = #{projectId},
+            user_id = #{userId},
+            role = #{role},
+            is_active_assignment = #{isActiveAssignment},
+            date_start = #{dateStart},
+            date_end = #{dateEnd},
+            create_at = #{createAt},
+            update_at = #{updateAt},
         </trim>
         where assignment_id = #{assignmentId}
     </update>

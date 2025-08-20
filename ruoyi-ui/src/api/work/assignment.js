@@ -43,4 +43,3 @@ export function delAssignment(assignmentId) {
   })
 }
 
-// 传入日期null值到后端

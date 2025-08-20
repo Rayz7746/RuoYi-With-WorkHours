@@ -58,12 +58,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateWorkCustomer" parameterType="WorkCustomer">
         update work_customer
         <trim prefix="SET" suffixOverrides=",">
-            <if test="customerName != null">customer_name = #{customerName},</if>
-            <if test="code != null and code != ''">code = #{code},</if>
-            <if test="description != null">description = #{description},</if>
-            <if test="isActiveCustomer != null">is_active_customer = #{isActiveCustomer},</if>
-            <if test="createdAt != null">created_at = #{createdAt},</if>
-            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+            customer_name = #{customerName},
+            code = #{code},
+            description = #{description},
+            is_active_customer = #{isActiveCustomer},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt},
         </trim>
         where customer_id = #{customerId}
     </update>
