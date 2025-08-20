@@ -108,17 +108,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateWorkProject" parameterType="WorkProject">
         update work_project
         <trim prefix="SET" suffixOverrides=",">
-            name = #{name},
-            code = #{code},
-            customer_id = #{customerId},
-            project_manager_id = #{projectManagerId},
-            description = #{description},
-            contact_person = #{contactPerson},
-            is_default = #{isDefault},
-            is_billable = #{isBillable},
-            is_active = #{isActive},
-            created_at = #{createdAt},
-            updated_at = #{updatedAt},
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="code != null and code != ''">code = #{code},</if>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="projectManagerId != null">project_manager_id = #{projectManagerId},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="contactPerson != null">contact_person = #{contactPerson},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="isBillable != null">is_billable = #{isBillable},</if>
+            <if test="isActive != null">is_active = #{isActive},</if>
+            <if test="createdAt != null">created_at = #{createdAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
         </trim>
         where project_id = #{projectId}
     </update>
