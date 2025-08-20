@@ -14,29 +14,49 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="dateEnd"    column="date_end"    />
         <result property="createAt"    column="create_at"    />
         <result property="updateAt"    column="update_at"    />
+        <association property="project" javaType="WorkProject" resultMap="projectResult"/>
+        <association property="user" javaType="SysUser" resultMap="userResult"/>
+    </resultMap>
+
+    <resultMap type="WorkProject" id="projectResult">
+        <result property="projectId"    column="project_id"    />
+        <result property="name"    column="name"    />
+        <result property="customerId"    column="customer_id"    />
+    </resultMap>
+
+    <resultMap type="SysUser" id="userResult">
+        <id     property="userId"        column="user_id"         />
+        <result property="userName"      column="user_name"       />
+        <result property="nickName"      column="nick_name"       />
+        <result property="status"        column="status"          />
     </resultMap>
 
     <sql id="selectWorkAssignmentVo">
-        select assignment_id, project_id, user_id, role, is_active_assignment, date_start, date_end, create_at, update_at from work_assignment
+        select a.assignment_id, a.project_id, a.user_id, a.role, a.is_active_assignment, a.date_start, a.date_end, a.create_at, a.update_at
+        , p.project_id, p.name, p.customer_id
+        , u.user_id, u.user_name, u.nick_name, u.status
+        from work_assignment a
+            inner join work_project p on a.project_id = p.project_id and p.is_active = 1
+            left join sys_user u on a.user_id = u.user_id
     </sql>
 
     <select id="selectWorkAssignmentList" parameterType="WorkAssignment" resultMap="WorkAssignmentResult">
         <include refid="selectWorkAssignmentVo"/>
-        <where>  
-            <if test="projectId != null "> and project_id = #{projectId}</if>
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="role != null  and role != ''"> and role = #{role}</if>
-            <if test="isActiveAssignment != null "> and is_active_assignment = #{isActiveAssignment}</if>
-            <if test="dateStart != null "> and date_start = #{dateStart}</if>
-            <if test="dateEnd != null "> and date_end = #{dateEnd}</if>
-            <if test="createAt != null "> and create_at = #{createAt}</if>
-            <if test="updateAt != null "> and update_at = #{updateAt}</if>
+        <where>
+            <if test="projectId != null"> AND a.project_id = #{projectId}</if>
+            <if test="userId != null"> AND a.user_id = #{userId}</if>
+            <if test="role != null and role != ''"> AND a.role = #{role}</if>
+            <if test="isActiveAssignment != null"> AND a.is_active_assignment = #{isActiveAssignment}</if>
+            <if test="dateStart != null"> AND a.date_start = #{dateStart}</if>
+            <if test="dateEnd != null"> AND a.date_end = #{dateEnd}</if>
+            <if test="createAt != null"> AND a.create_at = #{createAt}</if>
+            <if test="updateAt != null"> AND a.update_at = #{updateAt}</if>
         </where>
     </select>
-    
+
     <select id="selectWorkAssignmentByAssignmentId" parameterType="Long" resultMap="WorkAssignmentResult">
         <include refid="selectWorkAssignmentVo"/>
-        where assignment_id = #{assignmentId}
+        WHERE a.assignment_id = #{assignmentId}
     </select>
 
     <insert id="insertWorkAssignment" parameterType="WorkAssignment" useGeneratedKeys="true" keyProperty="assignmentId">

@@ -45,7 +45,7 @@ export function delProject(projectId) {
 
 export function customerSelect() {
   return request({
-    url: '/work/project/customerSelect',
+    url: '/work/customer/customerSelect',
     method: 'get',
   })
 }

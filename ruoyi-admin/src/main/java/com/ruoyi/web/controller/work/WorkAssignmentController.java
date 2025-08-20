@@ -1,6 +1,12 @@
 package com.ruoyi.web.controller.work;
 
 import java.util.List;
+
+import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.system.criteria.WorkProjectQueryCriteria;
+import com.ruoyi.system.domain.WorkProject;
+import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.system.service.IWorkProjectService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +39,12 @@ public class WorkAssignmentController extends BaseController
 {
     @Autowired
     private IWorkAssignmentService workAssignmentService;
+
+    @Autowired
+    private ISysUserService sysUserService;
+
+    @Autowired
+    private IWorkProjectService workProjectService;
 
     /**
      * 查询项目任务分配关系列表
@@ -101,4 +113,19 @@ public class WorkAssignmentController extends BaseController
     {
         return toAjax(workAssignmentService.deleteWorkAssignmentByAssignmentIds(assignmentIds));
     }
+
+    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
+    @GetMapping("/userSelect")
+    public AjaxResult userSelect(SysUser user)
+    {
+        return success(sysUserService.selectUserList(user));
+    }
+
+    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
+    @GetMapping("/projectNameSelect")
+    public AjaxResult projectNameSelect(WorkProjectQueryCriteria workProject)
+    {
+        return success(workProjectService.selectWorkProjectList(workProject));
+    }
+
 }

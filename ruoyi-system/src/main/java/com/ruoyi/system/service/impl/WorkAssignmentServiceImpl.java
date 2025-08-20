@@ -1,6 +1,9 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+
+import com.ruoyi.system.domain.WorkProject;
+import com.ruoyi.system.service.IWorkProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.mapper.WorkAssignmentMapper;
@@ -19,6 +22,18 @@ public class WorkAssignmentServiceImpl implements IWorkAssignmentService
     @Autowired
     private WorkAssignmentMapper workAssignmentMapper;
 
+    @Autowired
+    private IWorkProjectService workProjectService;
+
+    private void append(WorkAssignment workAssignment) {
+        if (workAssignment == null) {
+            return;
+        }
+        if (workAssignment.getProjectId() != null) {
+            WorkProject workProject = workProjectService.selectWorkProjectByProjectId(workAssignment.getProjectId());
+            workAssignment.setProject(workProject);
+        }
+    }
     /**
      * 查询项目任务分配关系
      * 
@@ -28,7 +43,9 @@ public class WorkAssignmentServiceImpl implements IWorkAssignmentService
     @Override
     public WorkAssignment selectWorkAssignmentByAssignmentId(Long assignmentId)
     {
-        return workAssignmentMapper.selectWorkAssignmentByAssignmentId(assignmentId);
+        WorkAssignment workAssignment = workAssignmentMapper.selectWorkAssignmentByAssignmentId(assignmentId);
+        append(workAssignment);
+        return workAssignment;
     }
 
     /**
@@ -40,7 +57,11 @@ public class WorkAssignmentServiceImpl implements IWorkAssignmentService
     @Override
     public List<WorkAssignment> selectWorkAssignmentList(WorkAssignment workAssignment)
     {
-        return workAssignmentMapper.selectWorkAssignmentList(workAssignment);
+        List<WorkAssignment> workAssignments = workAssignmentMapper.selectWorkAssignmentList(workAssignment);
+        for (WorkAssignment assignment : workAssignments) {
+            append(assignment);
+        }
+        return workAssignments;
     }
 
     /**

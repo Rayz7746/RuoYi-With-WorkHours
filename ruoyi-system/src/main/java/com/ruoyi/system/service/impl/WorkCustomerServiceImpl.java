@@ -1,6 +1,8 @@
 package com.ruoyi.system.service.impl;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.mapper.WorkCustomerMapper;
@@ -30,6 +32,19 @@ public class WorkCustomerServiceImpl implements IWorkCustomerService
     {
         return workCustomerMapper.selectWorkCustomerByCustomerId(customerId);
     }
+
+    @Override
+    public List<WorkCustomer> selectWorkCustomers(Long[] customerIds) {
+        if (customerIds == null) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.stream(customerIds)
+                .map(workCustomerMapper::selectWorkCustomerByCustomerId)
+                .collect(Collectors.toList()); // 不移除 null
+    }
+
+
 
     /**
      * 查询客户信息列表

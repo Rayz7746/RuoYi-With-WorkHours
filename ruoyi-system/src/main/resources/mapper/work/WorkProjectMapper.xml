@@ -3,7 +3,7 @@
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.WorkProjectMapper">
-    
+
     <resultMap type="WorkProject" id="WorkProjectResult">
         <result property="projectId"    column="project_id"    />
         <result property="name"    column="name"    />
@@ -17,15 +17,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="isActive"    column="is_active"    />
         <result property="createdAt"    column="created_at"    />
         <result property="updatedAt"    column="updated_at"    />
-        <association property="customer"    javaType="WorkCustomer"     resultMap="customerResult"/>
         <association property="user"    javaType="SysUser"     resultMap="userResult"/>
 
-    </resultMap>
-
-    <resultMap type="WorkCustomer" id="customerResult">
-        <result property="customerId"    column="customer_id"    />
-        <result property="customerName"    column="customer_name"    />
-        <result property="isActiveCustomer"    column="is_active_customer"    />
     </resultMap>
 
     <resultMap type="SysUser" id="userResult">
@@ -40,13 +33,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <!--    p for WorkProject; c for WorkCustomer; u for User-->
     <sql id="selectWorkProjectVo">
         select p.project_id, p.name, p.code, p.customer_id, p.project_manager_id, p.description, p.contact_person, p.is_default, p.is_billable, p.is_active, p.created_at, p.updated_at,
-        c.customer_id, c.customer_name, c.is_active_customer,
         u.user_id, u.user_name, u.nick_name
 
         from work_project p
-            inner join work_customer c on p.customer_id = c.customer_id and c.is_active_customer = 1
             left join sys_user u on p.project_manager_id = u.user_id
-
+             where exists (select 1 from work_customer c where p.customer_id = c.customer_id and c.is_active_customer = 1)
     </sql>
 
     <select id="selectWorkProjectList" parameterType="WorkProject" resultMap="WorkProjectResult">
@@ -72,7 +63,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <select id="selectWorkProjectByProjectId" parameterType="Long" resultMap="WorkProjectResult">
         <include refid="selectWorkProjectVo"/>
-        where project_id = #{projectId}
+        and project_id = #{projectId}
     </select>
 
     <insert id="insertWorkProject" parameterType="WorkProject" useGeneratedKeys="true" keyProperty="projectId">

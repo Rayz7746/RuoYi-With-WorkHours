@@ -1,6 +1,14 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.system.criteria.WorkProjectQueryCriteria;
+import com.ruoyi.system.domain.WorkCustomer;
+import com.ruoyi.system.service.IWorkCustomerService;
+import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.mapper.WorkProjectMapper;
@@ -19,6 +27,9 @@ public class WorkProjectServiceImpl implements IWorkProjectService
     @Autowired
     private WorkProjectMapper workProjectMapper;
 
+    @Autowired
+    private IWorkCustomerService workCustomerService;
+
     /**
      * 查询项目信息
      * 
@@ -28,7 +39,12 @@ public class WorkProjectServiceImpl implements IWorkProjectService
     @Override
     public WorkProject selectWorkProjectByProjectId(Long projectId)
     {
-        return workProjectMapper.selectWorkProjectByProjectId(projectId);
+        WorkProject workProject = workProjectMapper.selectWorkProjectByProjectId(projectId);
+        if (workProject != null && workProject.getCustomerId() != null) {
+            WorkCustomer customer = workCustomerService.selectWorkCustomerByCustomerId(workProject.getCustomerId());
+            workProject.setCustomer(customer);
+        }
+        return workProject;
     }
 
     /**
@@ -38,9 +54,21 @@ public class WorkProjectServiceImpl implements IWorkProjectService
      * @return 项目信息
      */
     @Override
-    public List<WorkProject> selectWorkProjectList(WorkProject workProject)
+    public List<WorkProject> selectWorkProjectList(WorkProjectQueryCriteria workProject)
     {
-        return workProjectMapper.selectWorkProjectList(workProject);
+        List<WorkProject> workProjects = workProjectMapper.selectWorkProjectList(workProject);
+        Long[] customerIds = workProjects.stream().map(WorkProject::getCustomerId).toArray(Long[]::new);
+        List<WorkCustomer> customers = workCustomerService.selectWorkCustomers(customerIds);
+        Map<Long, WorkCustomer> customerMap = customers.stream().collect(Collectors.toMap(
+                WorkCustomer::getCustomerId,      // 键的映射函数
+                customer -> customer,
+                (existing, replacement) -> existing
+        ));
+        for (WorkProject project : workProjects) {
+            WorkCustomer customer = customerMap.get(project.getCustomerId());
+            project.setCustomer(customer);
+        }
+        return workProjects;
     }
 
     /**

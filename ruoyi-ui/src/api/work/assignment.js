@@ -43,3 +43,17 @@ export function delAssignment(assignmentId) {
   })
 }
 
+export function userSelect() {
+  return request({
+    url: '/work/assignment/userSelect',
+    method: 'get',
+  })
+}
+
+// 新增：项目名称下拉（返回 { projectId, name, isActive } 列表）
+export function projectNameSelect() {
+  return request({
+    url: '/work/assignment/projectNameSelect',
+    method: 'get',
+  })
+}

@@ -101,4 +101,11 @@ public class WorkCustomerController extends BaseController
     {
         return toAjax(workCustomerService.deleteWorkCustomerByCustomerIds(customerIds));
     }
+
+    @PreAuthorize("@ss.hasPermi('work:project:list')")
+    @GetMapping("/customerSelect")
+    public AjaxResult customerSelect(WorkCustomer customer)
+    {
+        return success(workCustomerService.selectWorkCustomerList(customer));
+    }
 }

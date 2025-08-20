@@ -28,13 +28,13 @@
           style="width: 260px"
         />
       </el-form-item>
-      <el-form-item label="项目负责人" prop="projectManagerId">
+      <el-form-item label="项目经理" prop="projectManagerId">
         <el-select-v2
           v-model="queryParams.projectManagerId"
           :options="projectManagerOptionsV2"
           filterable
           clearable
-          placeholder="请选择项目负责人"
+          placeholder="请选择项目经理"
           style="width: 260px"
         />
       </el-form-item>
@@ -127,8 +127,8 @@
       <el-table-column label="项目编码" align="center" prop="code" />
       <!-- <el-table-column label="关联客户ID" align="center" prop="customerId" /> -->
       <el-table-column label="关联客户" align="center" prop="customer.customerName" />
-      <!-- <el-table-column label="项目负责人ID" align="center" prop="projectManagerId" /> -->
-      <el-table-column label="项目负责人" align="center" prop="user.nickName" />
+      <!-- <el-table-column label="项目经理ID" align="center" prop="projectManagerId" /> -->
+      <el-table-column label="项目经理" align="center" prop="user.nickName" />
       <el-table-column label="项目描述" align="center" prop="description" />
       <el-table-column label="联系人" align="center" prop="contactPerson" />
 
@@ -227,13 +227,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="项目负责人" prop="projectManagerId">
+            <el-form-item label="项目经理" prop="projectManagerId">
               <el-select-v2
                 v-model="form.projectManagerId"
                 :options="projectManagerOptionsV2"
                 filterable
                 clearable
-                placeholder="请选择项目负责人"
+                placeholder="请选择项目经理"
                 style="width: 100%"
               />
             </el-form-item>
@@ -340,7 +340,7 @@ const data = reactive({
       { required: true, message: '是否启用不能为空', trigger: 'change' }
     ],
     projectManagerId: [
-      { required: true, message: '项目负责人不能为空', trigger: 'blur' }
+      { required: true, message: '项目经理不能为空', trigger: 'blur' }
     ],
   }
 })

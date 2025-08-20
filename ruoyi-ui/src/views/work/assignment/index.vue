@@ -1,20 +1,26 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="90px" class="assignment-search">
-      <el-form-item label="project_id" prop="projectId">
-        <el-input
+      <!-- 替换 project_id 输入为 项目 下拉（显示 project.name，提交 projectId） -->
+      <el-form-item label="项目" prop="projectId">
+        <el-select-v2
           v-model="queryParams.projectId"
-          placeholder="请输入关联work_project表的project_id"
+          :options="projectOptionsV2"
+          filterable
           clearable
-          @keyup.enter="handleQuery"
+          placeholder="请选择项目"
+          style="width: 260px"
         />
       </el-form-item>
-      <el-form-item label="user_id" prop="userId">
-        <el-input
+      <!-- 替换：user_id 文本输入 -> 项目人员 下拉 -->
+      <el-form-item label="项目人员" prop="userId">
+        <el-select-v2
           v-model="queryParams.userId"
-          placeholder="请输入关联sys_user表的user_id"
+          :options="memberOptionsV2"
+          filterable
           clearable
-          @keyup.enter="handleQuery"
+          placeholder="请选择项目人员"
+          style="width: 260px"
         />
       </el-form-item>
       <el-form-item label="角色" prop="role">
@@ -81,8 +87,11 @@
 
     <el-table v-loading="loading" :data="assignmentList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="project_id" align="center" prop="projectId" />
-      <el-table-column label="user_id" align="center" prop="userId" />
+      <!-- <el-table-column label="project_id" align="center" prop="projectId" /> -->
+      <el-table-column label="项目客户" align="center" prop="project.customer.customerName" />
+      <el-table-column label="项目名称" align="center" prop="project.name" />
+            <!-- <el-table-column label="user_id" align="center" prop="userId" /> -->
+      <el-table-column label="项目人员" align="center" prop="user.nickName" />
       <el-table-column label="角色" align="center" prop="role" />
       <el-table-column label="是否有效" align="center" prop="isActiveAssignment" width="120">
         <template #default="scope">
@@ -138,13 +147,29 @@
       <el-form ref="assignmentRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="project_id" prop="projectId">
-              <el-input v-model="form.projectId" placeholder="请输入关联work_project表的project_id" />
+            <!-- 弹窗同样替换为下拉 -->
+            <el-form-item label="项目" prop="projectId">
+              <el-select-v2
+                v-model="form.projectId"
+                :options="projectOptionsV2"
+                filterable
+                clearable
+                placeholder="请选择项目"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
+          <!-- 替换：user_id 文本输入 -> 项目人员 下拉 -->
           <el-col :span="12">
-            <el-form-item label="user_id" prop="userId">
-              <el-input v-model="form.userId" placeholder="请输入关联sys_user表的user_id" />
+            <el-form-item label="项目人员" prop="userId">
+              <el-select-v2
+                v-model="form.userId"
+                :options="memberOptionsV2"
+                filterable
+                clearable
+                placeholder="请选择项目人员"
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -209,7 +234,7 @@
 </template>
 
 <script setup name="Assignment">
-import { listAssignment, getAssignment, delAssignment, addAssignment, updateAssignment } from "@/api/work/assignment"
+import { listAssignment, getAssignment, delAssignment, addAssignment, updateAssignment, userSelect, projectNameSelect } from "@/api/work/assignment"
 import { nextTick } from "vue"
 
 const { proxy } = getCurrentInstance()
@@ -235,8 +260,8 @@ const data = reactive({
     isActiveAssignment: null
   },
   rules: {
-    projectId: [{ required: true, message: "project_id不能为空", trigger: "blur" }],
-    userId: [{ required: true, message: "user_id不能为空", trigger: "blur" }],
+    projectId: [{ required: true, message: "项目不能为空", trigger: "blur" }],
+    userId: [{ required: true, message: "项目人员不能为空", trigger: "blur" }],
     isActiveAssignment: [{ required: true, message: "是否有效不能为空", trigger: "change" }],
     // 替换为“按需必填 + 先后关系”合并校验
     dateStart: [{ validator: validateDateStart, trigger: "change" }],
@@ -439,6 +464,68 @@ function beforeToggleActive(row) {
   })
 }
 
+// 新增：项目人员下拉数据
+const memberOptions = ref(undefined)
+const enabledMemberOptions = ref(undefined)
+
+// 新增：将后端用户列表映射为 el-select-v2 需要的结构
+const memberOptionsV2 = computed(() => {
+  const list = enabledMemberOptions.value || []
+  return list
+    .map(u => ({
+      value: u.userId ?? u.value,
+      label: u.nickName ?? u.label,
+      disabled: u.disabled === true || u.status === 1 || u.status === '1'
+    }))
+    .filter(o => o.value != null && o.label != null)
+})
+
+// 新增：获取项目人员（这里复用项目经理选择接口，后端返回用户 userId/nickName）
+function getMemberSelectOption() {
+  userSelect().then(res => {
+    memberOptions.value = res.data || []
+    enabledMemberOptions.value = filterDisabledMember(JSON.parse(JSON.stringify(memberOptions.value)))
+  })
+}
+
+// 新增：过滤禁用用户
+function filterDisabledMember(list) {
+  return (list || []).filter(u => !(u?.disabled === true || u?.status === 1 || u?.status === '1'))
+}
+
+// 新增：项目下拉数据
+const projectOptions = ref(undefined)
+const enabledProjectOptions = ref(undefined)
+
+// 映射为 el-select-v2 结构（显示项目名称）
+const projectOptionsV2 = computed(() => {
+  const list = enabledProjectOptions.value || []
+  return list
+    .map(p => ({
+      value: p.projectId ?? p.value,
+      label: p.name ?? p.label,
+      disabled: p.isActive === 0 || p.disabled === true
+    }))
+    .filter(o => o.value != null && o.label != null)
+})
+
+// 获取项目下拉（使用 assignment.js 的 projectNameSelect）
+function getProjectSelectOption() {
+  projectNameSelect().then(res => {
+    projectOptions.value = res.data || []
+    enabledProjectOptions.value = filterDisabledProject(JSON.parse(JSON.stringify(projectOptions.value)))
+  })
+}
+
+// 过滤禁用/停用项目
+function filterDisabledProject(list) {
+  return (list || []).filter(p => !(p?.isActive === 0 || p?.disabled === true))
+}
+
+onMounted(() => {
+  getMemberSelectOption()
+  getProjectSelectOption()
+})
 getList()
 </script>
 

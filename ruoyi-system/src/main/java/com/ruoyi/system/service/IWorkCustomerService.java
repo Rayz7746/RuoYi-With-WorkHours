@@ -19,6 +19,8 @@ public interface IWorkCustomerService
      */
     public WorkCustomer selectWorkCustomerByCustomerId(Long customerId);
 
+    public List<WorkCustomer> selectWorkCustomers(Long[] customerIds);
+
     /**
      * 查询客户信息列表
      * 

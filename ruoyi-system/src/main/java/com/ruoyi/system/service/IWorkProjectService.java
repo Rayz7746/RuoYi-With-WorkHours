@@ -1,6 +1,8 @@
 package com.ruoyi.system.service;
 
 import java.util.List;
+
+import com.ruoyi.system.criteria.WorkProjectQueryCriteria;
 import com.ruoyi.system.domain.WorkProject;
 
 /**
@@ -25,7 +27,7 @@ public interface IWorkProjectService
      * @param workProject 项目信息
      * @return 项目信息集合
      */
-    public List<WorkProject> selectWorkProjectList(WorkProject workProject);
+    public List<WorkProject> selectWorkProjectList(WorkProjectQueryCriteria workProject);
 
     /**
      * 新增项目信息

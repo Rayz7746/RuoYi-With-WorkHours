@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.work;
 import java.util.List;
 
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.system.criteria.WorkProjectQueryCriteria;
 import com.ruoyi.system.domain.WorkCustomer;
 import com.ruoyi.system.service.ISysUserService;
 import com.ruoyi.system.service.IWorkCustomerService;
@@ -45,12 +46,13 @@ public class WorkProjectController extends BaseController
     @Autowired
     private ISysUserService sysUserService;
 
+
     /**
      * 查询项目信息列表
      */
     @PreAuthorize("@ss.hasPermi('work:project:list')")
     @GetMapping("/list")
-    public TableDataInfo list(WorkProject workProject)
+    public TableDataInfo list(WorkProjectQueryCriteria workProject)
     {
         startPage();
         List<WorkProject> list = workProjectService.selectWorkProjectList(workProject);
@@ -63,7 +65,7 @@ public class WorkProjectController extends BaseController
     @PreAuthorize("@ss.hasPermi('work:project:export')")
     @Log(title = "项目信息", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, WorkProject workProject)
+    public void export(HttpServletResponse response, WorkProjectQueryCriteria workProject)
     {
         List<WorkProject> list = workProjectService.selectWorkProjectList(workProject);
         ExcelUtil<WorkProject> util = new ExcelUtil<WorkProject>(WorkProject.class);
@@ -113,12 +115,7 @@ public class WorkProjectController extends BaseController
         return toAjax(workProjectService.deleteWorkProjectByProjectIds(projectIds));
     }
 
-    @PreAuthorize("@ss.hasPermi('work:project:list')")
-    @GetMapping("/customerSelect")
-    public AjaxResult customerSelect(WorkCustomer customer)
-    {
-        return success(workCustomerService.selectWorkCustomerList(customer));
-    }
+
 
     @PreAuthorize("@ss.hasPermi('work:project:list')")
     @GetMapping("/projectManagerSelect")
