@@ -276,6 +276,9 @@ const multiple = ref(true)
 const total = ref(0)
 const title = ref("")
 
+// 新增：编辑回填时的静默标志，避免 watch 清空 projectId
+const silentlySyncingFormCustomer = ref(false)
+
 const data = reactive({
   form: {},
   queryParams: {
@@ -403,19 +406,43 @@ function handleUpdate(row) {
     const derivedCustomerId = currentProject.customerId
       ?? currentProject?.customer?.customerId
       ?? null
+    const derivedProjectId = d.projectId
+      ?? currentProject.projectId
+      ?? currentProject.id
+      ?? null
 
+    // 静默设置 customerId，避免 watch 把 projectId 清空
+    silentlySyncingFormCustomer.value = true
     form.value = {
-      ...d,
+      assignmentId: d.assignmentId,
       customerId: derivedCustomerId,
+      projectId: null, // 暂不设，待选项加载完后回填
+      userId: d.userId ?? d.user?.userId ?? null,
+      role: d.role ?? null,
       isActiveAssignment: d.isActiveAssignment === 1 || d.isActiveAssignment === '1' ? 1 : 0,
-      // 根据后端日期是否存在推断启用状态
-      enableDate: (d.dateStart != null || d.dateEnd != null) ? 1 : 0
+      enableDate: (d.dateStart != null || d.dateEnd != null) ? 1 : 0,
+      dateStart: d.dateStart ?? null,
+      dateEnd: d.dateEnd ?? null
     }
 
-    // 加载该客户的项目列表，确保项目下拉可见当前项目
-    loadFormProjectsByCustomer(derivedCustomerId)
-    open.value = true
-    title.value = "修改项目任务分配关系"
+    ensureAllProjects()
+      .then(() => {
+        // 先按客户加载可选项目
+        loadFormProjectsByCustomer(derivedCustomerId)
+      })
+      .then(() => nextTick(() => {
+        // 再回填 projectId（确保类型一致）
+        const match = (allProjects.value || []).find(p =>
+          String(getProjectCustomerId(p)) === String(derivedCustomerId) &&
+          String(p.projectId) === String(derivedProjectId)
+        )
+        form.value.projectId = match ? match.projectId : derivedProjectId
+        silentlySyncingFormCustomer.value = false
+      }))
+      .finally(() => {
+        open.value = true
+        title.value = "修改项目任务分配关系"
+      })
   })
 }
 
@@ -589,7 +616,7 @@ const searchProjectOptionsV2 = computed(() => {
   return list.map(p => ({
     value: p.projectId ?? p.value,
     label: p.name ?? p.label,
-    disabled: p.isActive === 0 || p.disabled === true || p.status === 0 || p.status === '0'
+    disabled: p.isActive === 0
   })).filter(o => o.value != null && o.label != null)
 })
 
@@ -601,7 +628,7 @@ const formProjectOptionsV2 = computed(() => {      // 新增
   return list.map(p => ({
     value: p.projectId ?? p.value,
     label: p.name ?? p.label,
-    disabled: p.isActive === 0 || p.disabled === true || p.status === 0 || p.status === '0'
+    disabled: p.isActive === 0
   })).filter(o => o.value != null && o.label != null)
 })
 
@@ -609,6 +636,14 @@ const formProjectOptionsV2 = computed(() => {      // 新增
 const allProjects = ref([])
 function preloadAllProjects() {
   projectNameSelect().then(res => {
+    allProjects.value = Array.isArray(res.data) ? res.data : []
+  })
+}
+
+// 新增：保证拿到全量项目后再继续（编辑回填会用到）
+function ensureAllProjects() {
+  if (allProjects.value && allProjects.value.length > 0) return Promise.resolve()
+  return projectNameSelect().then(res => {
     allProjects.value = Array.isArray(res.data) ? res.data : []
   })
 }
@@ -644,9 +679,16 @@ watch(() => queryParams.value.customerId, (cid) => {
   loadSearchProjectsByCustomer(cid)
 })
 
-// 监听：表单客户 -> 清空项目并加载客户项目
+// 监听：表单客户 -> 清空项目并加载客户项目（编辑回填时不清空）
 watch(() => form.value.customerId, (cid) => {
-  form.value.projectId = null
+  if (!cid) {
+    enabledFormProjectOptions.value = []
+    form.value.projectId = null
+    return
+  }
+  if (!silentlySyncingFormCustomer.value) {
+    form.value.projectId = null
+  }
   loadFormProjectsByCustomer(cid)
 })
 
