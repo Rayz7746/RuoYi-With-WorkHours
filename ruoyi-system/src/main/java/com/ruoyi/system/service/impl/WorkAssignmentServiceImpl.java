@@ -25,6 +25,7 @@ public class WorkAssignmentServiceImpl implements IWorkAssignmentService
     @Autowired
     private IWorkProjectService workProjectService;
 
+    // 注入 WorkProjectService 用于获取项目详情
     private void append(WorkAssignment workAssignment) {
         if (workAssignment == null) {
             return;
@@ -34,6 +35,13 @@ public class WorkAssignmentServiceImpl implements IWorkAssignmentService
             workAssignment.setProject(workProject);
         }
     }
+
+    // 校验新增与更新的工具，同数据库规则：  UNIQUE KEY `unique_assignment` (`project_id`,`user_id`),
+    private void validateWorkAssignment(WorkAssignment workAssignment) {
+
+
+    }
+
     /**
      * 查询项目任务分配关系
      * 

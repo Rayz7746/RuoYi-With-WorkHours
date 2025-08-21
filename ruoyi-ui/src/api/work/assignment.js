@@ -2,11 +2,12 @@ import request from '@/utils/request'
 
 // 查询项目任务分配关系列表
 export function listAssignment(query) {
-  return request({
-    url: '/work/assignment/list',
-    method: 'get',
-    params: query
-  })
+  const params = { ...query }
+  if (params.customerId != null) {
+    params['project.customerId'] = params.customerId
+    delete params.customerId
+  }
+  return request({ url: '/work/assignment/list', method: 'get', params })
 }
 
 // 查询项目任务分配关系详细

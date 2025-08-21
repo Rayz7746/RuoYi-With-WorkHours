@@ -51,6 +51,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="dateEnd != null"> AND a.date_end = #{dateEnd}</if>
             <if test="createAt != null"> AND a.create_at = #{createAt}</if>
             <if test="updateAt != null"> AND a.update_at = #{updateAt}</if>
+            <!-- 新增：按客户过滤（依赖 join 的别名 p） -->
+            <if test="project != null and project.customerId != null">
+                AND p.customer_id = #{project.customerId}
+            </if>
         </where>
     </select>
 
