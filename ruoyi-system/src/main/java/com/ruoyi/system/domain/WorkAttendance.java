@@ -3,6 +3,8 @@ package com.ruoyi.system.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ruoyi.common.annotation.Excels;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
@@ -22,19 +24,30 @@ public class WorkAttendance extends BaseEntity
     private Long attendanceId;
 
     /** 用户ID */
-    @Excel(name = "用户ID")
+//    @Excel(name = "用户ID")
     private Long userId;
 
+    @Excel(name = "用户名称", targetAttr = "nickName", type = Excel.Type.EXPORT)
+    private SysUser user;
+
     /** 项目ID */
-    @Excel(name = "项目ID")
+//    @Excel(name = "项目ID")
     private Long projectId;
 
+    @Excels({
+            @Excel(name = "客户名称", targetAttr = "customer.customerName", type = Excel.Type.EXPORT),
+            @Excel(name = "项目名称", targetAttr = "name", type = Excel.Type.EXPORT)
+    })
+    private WorkProject project;
+
+
     /** 考勤日期（精确到天） */
-    @Excel(name = "考勤日期", readConverterExp = "精=确到天")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Excel(name = "考勤日期",width = 30, dateFormat = "yyyy-MM-dd")
     private Date attendanceDate;
 
     /** 工作时长（小时，支持小数） */
-    @Excel(name = "工作时长", readConverterExp = "小=时，支持小数")
+    @Excel(name = "工作时长")
     private BigDecimal workingHours;
 
     /** 考勤备注 */
@@ -43,12 +56,12 @@ public class WorkAttendance extends BaseEntity
 
     /** 记录创建时间 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "记录创建时间", width = 30, dateFormat = "yyyy-MM-dd")
+//    @Excel(name = "记录创建时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date createAt;
 
     /** 记录最后更新时间 */
     @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "记录最后更新时间", width = 30, dateFormat = "yyyy-MM-dd")
+//    @Excel(name = "记录最后更新时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date updateAt;
 
     public void setAttendanceId(Long attendanceId) 
@@ -69,6 +82,24 @@ public class WorkAttendance extends BaseEntity
     public Long getUserId() 
     {
         return userId;
+    }
+
+    public SysUser getUser()
+    {
+        return user;
+    }
+    public void setUser(SysUser user)
+    {
+        this.user = user;
+    }
+
+    public WorkProject getProject()
+    {
+        return project;
+    }
+    public void setProject(WorkProject project)
+    {
+        this.project = project;
     }
 
     public void setProjectId(Long projectId) 
@@ -142,6 +173,8 @@ public class WorkAttendance extends BaseEntity
             .append("comment", getComment())
             .append("createAt", getCreateAt())
             .append("updateAt", getUpdateAt())
+            .append("project", getProject() != null ? getProject().getName() : null)
+            .append("user", getUser() != null ? getUser().getNickName() : null)
             .toString();
     }
 }

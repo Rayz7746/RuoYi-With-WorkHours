@@ -2,6 +2,7 @@ package com.ruoyi.system.domain;
 
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ruoyi.common.annotation.Excels;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -25,7 +26,10 @@ public class WorkAssignment extends BaseEntity
 //    @Excel(name = "关联work_project表的project_id")
     private Long projectId;
 
-    @Excel(name = "项目名称", targetAttr = "name", type = Excel.Type.EXPORT)
+    @Excels({
+            @Excel(name = "客户名称", targetAttr = "customer.customerName", type = Excel.Type.EXPORT),
+            @Excel(name = "项目名称", targetAttr = "name", type = Excel.Type.EXPORT)
+    })
     private WorkProject project;
 
     /** 关联sys_user表的user_id */

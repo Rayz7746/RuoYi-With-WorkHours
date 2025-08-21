@@ -1,40 +1,81 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ruoyi.system.mapper.WorkAttendanceMapper">
-    
+
+    <!-- 实体映射 -->
     <resultMap type="WorkAttendance" id="WorkAttendanceResult">
-        <result property="attendanceId"    column="attendance_id"    />
-        <result property="userId"    column="user_id"    />
-        <result property="projectId"    column="project_id"    />
-        <result property="attendanceDate"    column="attendance_date"    />
-        <result property="workingHours"    column="working_hours"    />
-        <result property="comment"    column="comment"    />
-        <result property="createAt"    column="create_at"    />
-        <result property="updateAt"    column="update_at"    />
+        <result property="attendanceId" column="attendance_id"/>
+        <result property="userId"      column="user_id"/>
+        <result property="projectId"   column="project_id"/>
+        <result property="attendanceDate" column="attendance_date"/>
+        <result property="workingHours"   column="working_hours"/>
+        <result property="comment"        column="comment"/>
+        <result property="createAt"       column="create_at"/>
+        <result property="updateAt"       column="update_at"/>
+        <association property="project" javaType="WorkProject" resultMap="projectResult"/>
+        <association property="user"    javaType="SysUser"     resultMap="userResult"/>
+    </resultMap>
+
+    <!-- 注意：使用别名，避免与主表列重名 -->
+    <resultMap type="WorkProject" id="projectResult">
+        <result property="projectId"  column="p_project_id"/>
+        <result property="name"       column="p_name"/>
+        <result property="customerId" column="p_customer_id"/>
+    </resultMap>
+
+    <resultMap type="SysUser" id="userResult">
+        <id     property="userId"   column="u_user_id"/>
+        <result property="userName" column="u_user_name"/>
+        <result property="nickName" column="u_nick_name"/>
+        <result property="status"   column="u_status"/>
     </resultMap>
 
     <sql id="selectWorkAttendanceVo">
-        select attendance_id, user_id, project_id, attendance_date, working_hours, comment, create_at, update_at from work_attendance
+        select
+        att.attendance_id,
+        att.user_id as user_id,          -- 保留给主实体
+        att.project_id as project_id,    -- 保留给主实体
+        att.attendance_date,
+        att.working_hours,
+        att.comment,
+        att.create_at,
+        att.update_at,
+        -- project 别名
+        p.project_id  as p_project_id,
+        p.name        as p_name,
+        p.customer_id as p_customer_id,
+        -- user 别名
+        u.user_id   as u_user_id,
+        u.user_name as u_user_name,
+        u.nick_name as u_nick_name,
+        u.status    as u_status
+        from work_attendance att
+        left join work_project p on att.project_id = p.project_id and p.is_active = 1
+        left join sys_user u on att.user_id = u.user_id
     </sql>
 
     <select id="selectWorkAttendanceList" parameterType="WorkAttendance" resultMap="WorkAttendanceResult">
         <include refid="selectWorkAttendanceVo"/>
-        <where>  
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="projectId != null "> and project_id = #{projectId}</if>
-            <if test="attendanceDate != null "> and attendance_date = #{attendanceDate}</if>
-            <if test="workingHours != null "> and working_hours = #{workingHours}</if>
-            <if test="comment != null  and comment != ''"> and comment = #{comment}</if>
-            <if test="createAt != null "> and create_at = #{createAt}</if>
-            <if test="updateAt != null "> and update_at = #{updateAt}</if>
+        <where>
+            <if test="userId != null">            and att.user_id = #{userId}</if>
+            <if test="projectId != null">         and att.project_id = #{projectId}</if>
+            <if test="attendanceDate != null">    and att.attendance_date = #{attendanceDate}</if>
+            <if test="workingHours != null">      and att.working_hours = #{workingHours}</if>
+            <if test="comment != null and comment != ''"> and att.comment = #{comment}</if>
+            <if test="createAt != null">          and att.create_at = #{createAt}</if>
+            <if test="updateAt != null">          and att.update_at = #{updateAt}</if>
+            <!-- 按客户过滤（前端已传 project.customerId 或通过 params 映射） -->
+            <if test="project != null and project.customerId != null">
+                and p.customer_id = #{project.customerId}
+            </if>
         </where>
     </select>
-    
+
     <select id="selectWorkAttendanceByAttendanceId" parameterType="Long" resultMap="WorkAttendanceResult">
         <include refid="selectWorkAttendanceVo"/>
-        where attendance_id = #{attendanceId}
+        where att.attendance_id = #{attendanceId}
     </select>
 
     <insert id="insertWorkAttendance" parameterType="WorkAttendance" useGeneratedKeys="true" keyProperty="attendanceId">
@@ -47,7 +88,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="comment != null">comment,</if>
             <if test="createAt != null">create_at,</if>
             <if test="updateAt != null">update_at,</if>
-         </trim>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
             <if test="projectId != null">#{projectId},</if>
@@ -56,7 +97,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="comment != null">#{comment},</if>
             <if test="createAt != null">#{createAt},</if>
             <if test="updateAt != null">#{updateAt},</if>
-         </trim>
+        </trim>
     </insert>
 
     <update id="updateWorkAttendance" parameterType="WorkAttendance">
@@ -78,7 +119,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteWorkAttendanceByAttendanceIds" parameterType="String">
-        delete from work_attendance where attendance_id in 
+        delete from work_attendance where attendance_id in
         <foreach item="attendanceId" collection="array" open="(" separator="," close=")">
             #{attendanceId}
         </foreach>

@@ -1,6 +1,10 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+
+import com.ruoyi.system.domain.WorkAssignment;
+import com.ruoyi.system.domain.WorkProject;
+import com.ruoyi.system.service.IWorkProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.system.mapper.WorkAttendanceMapper;
@@ -19,6 +23,18 @@ public class WorkAttendanceServiceImpl implements IWorkAttendanceService
     @Autowired
     private WorkAttendanceMapper workAttendanceMapper;
 
+    @Autowired
+    private IWorkProjectService workProjectService;
+
+    private void append(WorkAttendance workAttendance) {
+        if (workAttendance == null) {
+            return;
+        }
+        if (workAttendance.getProjectId() != null) {
+            WorkProject workProject = workProjectService.selectWorkProjectByProjectId(workAttendance.getProjectId());
+            workAttendance.setProject(workProject);
+        }
+    }
     /**
      * 查询考勤记录
      * 
@@ -28,7 +44,9 @@ public class WorkAttendanceServiceImpl implements IWorkAttendanceService
     @Override
     public WorkAttendance selectWorkAttendanceByAttendanceId(Long attendanceId)
     {
-        return workAttendanceMapper.selectWorkAttendanceByAttendanceId(attendanceId);
+        WorkAttendance workAttendance = workAttendanceMapper.selectWorkAttendanceByAttendanceId(attendanceId);
+        append(workAttendance);
+        return workAttendance;
     }
 
     /**
@@ -40,7 +58,11 @@ public class WorkAttendanceServiceImpl implements IWorkAttendanceService
     @Override
     public List<WorkAttendance> selectWorkAttendanceList(WorkAttendance workAttendance)
     {
-        return workAttendanceMapper.selectWorkAttendanceList(workAttendance);
+        List<WorkAttendance> workAttendances = workAttendanceMapper.selectWorkAttendanceList(workAttendance);
+        for (WorkAttendance attendance : workAttendances) {
+            append(attendance);
+        }
+        return workAttendances;
     }
 
     /**
