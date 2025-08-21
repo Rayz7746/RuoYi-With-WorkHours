@@ -1,0 +1,61 @@
+package com.ruoyi.system.service;
+
+import java.util.List;
+import com.ruoyi.system.domain.WorkAttendance;
+
+/**
+ * 考勤记录Service接口
+ * 
+ * @author zha
+ * @date 2025-08-21
+ */
+public interface IWorkAttendanceService 
+{
+    /**
+     * 查询考勤记录
+     * 
+     * @param attendanceId 考勤记录主键
+     * @return 考勤记录
+     */
+    public WorkAttendance selectWorkAttendanceByAttendanceId(Long attendanceId);
+
+    /**
+     * 查询考勤记录列表
+     * 
+     * @param workAttendance 考勤记录
+     * @return 考勤记录集合
+     */
+    public List<WorkAttendance> selectWorkAttendanceList(WorkAttendance workAttendance);
+
+    /**
+     * 新增考勤记录
+     * 
+     * @param workAttendance 考勤记录
+     * @return 结果
+     */
+    public int insertWorkAttendance(WorkAttendance workAttendance);
+
+    /**
+     * 修改考勤记录
+     * 
+     * @param workAttendance 考勤记录
+     * @return 结果
+     */
+    public int updateWorkAttendance(WorkAttendance workAttendance);
+
+    /**
+     * 批量删除考勤记录
+     * 
+     * @param attendanceIds 需要删除的考勤记录主键集合
+     * @return 结果
+     */
+    public int deleteWorkAttendanceByAttendanceIds(Long[] attendanceIds);
+
+    /**
+     * 删除考勤记录信息
+     * 
+     * @param attendanceId 考勤记录主键
+     * @return 结果
+     */
+    public int deleteWorkAttendanceByAttendanceId(Long attendanceId);
+}

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.WorkAttendanceMapper">
+    
+    <resultMap type="WorkAttendance" id="WorkAttendanceResult">
+        <result property="attendanceId"    column="attendance_id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="projectId"    column="project_id"    />
+        <result property="attendanceDate"    column="attendance_date"    />
+        <result property="workingHours"    column="working_hours"    />
+        <result property="comment"    column="comment"    />
+        <result property="createAt"    column="create_at"    />
+        <result property="updateAt"    column="update_at"    />
+    </resultMap>
+
+    <sql id="selectWorkAttendanceVo">
+        select attendance_id, user_id, project_id, attendance_date, working_hours, comment, create_at, update_at from work_attendance
+    </sql>
+
+    <select id="selectWorkAttendanceList" parameterType="WorkAttendance" resultMap="WorkAttendanceResult">
+        <include refid="selectWorkAttendanceVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="projectId != null "> and project_id = #{projectId}</if>
+            <if test="attendanceDate != null "> and attendance_date = #{attendanceDate}</if>
+            <if test="workingHours != null "> and working_hours = #{workingHours}</if>
+            <if test="comment != null  and comment != ''"> and comment = #{comment}</if>
+            <if test="createAt != null "> and create_at = #{createAt}</if>
+            <if test="updateAt != null "> and update_at = #{updateAt}</if>
+        </where>
+    </select>
+    
+    <select id="selectWorkAttendanceByAttendanceId" parameterType="Long" resultMap="WorkAttendanceResult">
+        <include refid="selectWorkAttendanceVo"/>
+        where attendance_id = #{attendanceId}
+    </select>
+
+    <insert id="insertWorkAttendance" parameterType="WorkAttendance" useGeneratedKeys="true" keyProperty="attendanceId">
+        insert into work_attendance
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="projectId != null">project_id,</if>
+            <if test="attendanceDate != null">attendance_date,</if>
+            <if test="workingHours != null">working_hours,</if>
+            <if test="comment != null">comment,</if>
+            <if test="createAt != null">create_at,</if>
+            <if test="updateAt != null">update_at,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="projectId != null">#{projectId},</if>
+            <if test="attendanceDate != null">#{attendanceDate},</if>
+            <if test="workingHours != null">#{workingHours},</if>
+            <if test="comment != null">#{comment},</if>
+            <if test="createAt != null">#{createAt},</if>
+            <if test="updateAt != null">#{updateAt},</if>
+         </trim>
+    </insert>
+
+    <update id="updateWorkAttendance" parameterType="WorkAttendance">
+        update work_attendance
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="projectId != null">project_id = #{projectId},</if>
+            <if test="attendanceDate != null">attendance_date = #{attendanceDate},</if>
+            <if test="workingHours != null">working_hours = #{workingHours},</if>
+            <if test="comment != null">comment = #{comment},</if>
+            <if test="createAt != null">create_at = #{createAt},</if>
+            <if test="updateAt != null">update_at = #{updateAt},</if>
+        </trim>
+        where attendance_id = #{attendanceId}
+    </update>
+
+    <delete id="deleteWorkAttendanceByAttendanceId" parameterType="Long">
+        delete from work_attendance where attendance_id = #{attendanceId}
+    </delete>
+
+    <delete id="deleteWorkAttendanceByAttendanceIds" parameterType="String">
+        delete from work_attendance where attendance_id in 
+        <foreach item="attendanceId" collection="array" open="(" separator="," close=")">
+            #{attendanceId}
+        </foreach>
+    </delete>
+</mapper>
