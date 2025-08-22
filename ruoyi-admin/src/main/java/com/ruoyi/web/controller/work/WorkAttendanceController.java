@@ -1,6 +1,9 @@
 package com.ruoyi.web.controller.work;
 
 import java.util.List;
+
+import com.ruoyi.system.domain.WorkAssignment;
+import com.ruoyi.system.service.IWorkAssignmentService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +36,9 @@ public class WorkAttendanceController extends BaseController
 {
     @Autowired
     private IWorkAttendanceService workAttendanceService;
+
+    @Autowired
+    private IWorkAssignmentService workAssignmentService;
 
     /**
      * 查询考勤记录列表

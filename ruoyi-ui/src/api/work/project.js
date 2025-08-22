@@ -56,3 +56,9 @@ export function projectManagerSelect() {
     method: 'get',
   })
 }
+
+// 查询默认项目（isDefault = 1）——复用 listProject，并提供默认分页，调用失败多半是缺少 pageNum/pageSize
+
+export function listDefaultProject() { 
+  return listProject({ isDefault: 1 }) 
+}

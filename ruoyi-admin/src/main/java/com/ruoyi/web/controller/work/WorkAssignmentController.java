@@ -128,4 +128,16 @@ public class WorkAssignmentController extends BaseController
         return success(workProjectService.selectWorkProjectList(workProject));
     }
 
+    /**
+     * 根据用户ID获取assignment
+     */
+    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
+    @GetMapping("/assignment/{userId}")
+    public AjaxResult getAssignmentsByUserId(@PathVariable("userId") Long userId) {
+        WorkAssignment workAssignment = new WorkAssignment();
+        workAssignment.setUserId(userId);
+        List<WorkAssignment> assignments = workAssignmentService.selectWorkAssignmentList(workAssignment);
+        return success(assignments);
+    }
+
 }

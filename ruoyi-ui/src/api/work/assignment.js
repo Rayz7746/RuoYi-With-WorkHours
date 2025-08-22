@@ -66,3 +66,12 @@ export function projectNameSelect() {
     method: 'get'
   })
 }
+
+// 根据用户ID查询Assignment分配列表，是listAssignment的简化版本
+export function listAssignmentByUserId(userId) {
+  return request({
+    url: '/work/assignment/list',
+    method: 'get',
+    params: { userId }
+  })
+}

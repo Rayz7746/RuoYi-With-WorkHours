@@ -11,7 +11,7 @@
           <li>右侧输入每天工时 (0~24, 0.5 步长)</li>
           <li>周合计、日合计自动计算</li>
         </ul>
-        <el-switch v-model="showWeekend" active-text="含周末" inactive-text="工作日" size="small" />
+        <el-switch v-model="showWeekend" active-text="含周末" inactive-text="工作日" size="large" />
       </el-card>
     </div>
 
@@ -66,29 +66,34 @@
             <template #default="{ row }">
               <div
                 class="cell-wrapper"
-                :class="{ weekend: isWeekend(d), 'has-note': hasComment(row.projectId,d) }"
+                :class="{ weekend: isWeekend(d), 'has-note': hasComment(row.projectId,d), 'disabled-cell': !isAllowed(row.projectId,d) }"
               >
-                <el-input-number
-                  v-model="hours[row.projectId][dateKey(d)]"
-                  :min="0" :max="24" :step="0.5"
-                  size="small"
-                  controls-position="right"
-                />
-                <el-tooltip
-                  content="添加备注"
-                  placement="top"
-                  :show-after="300"
-                >
-                  <el-button
-                    link
+                <template v-if="isAllowed(row.projectId,d)">
+                  <el-input-number
+                    v-model="hours[row.projectId][dateKey(d)]"
+                    :min="0" :max="24" :step="0.5"
                     size="small"
-                    class="note-btn"
-                    :type="hasComment(row.projectId,d)?'primary':'default'"
-                    @click.stop="openComment(row.projectId,d)"
+                    controls-position="right"
+                  />
+                  <el-tooltip
+                    content="添加备注"
+                    placement="top"
+                    :show-after="300"
                   >
-                    <el-icon><ChatDotRound /></el-icon>
-                  </el-button>
-                </el-tooltip>
+                    <el-button
+                      link
+                      size="small"
+                      class="note-btn"
+                      :type="hasComment(row.projectId,d)?'primary':'default'"
+                      @click.stop="openComment(row.projectId,d)"
+                    >
+                      <el-icon><ChatDotRound /></el-icon>
+                    </el-button>
+                  </el-tooltip>
+                </template>
+                <template v-else>
+                  <span class="range-blocked">不可填报</span>
+                </template>
               </div>
             </template>
           </el-table-column>
@@ -132,39 +137,83 @@
 </template>
 
 <script setup name="SimpleWorkHours">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import WeekCalendar from './WeekCalendar.vue'
 import { ArrowLeft, ArrowRight, ChatDotRound } from '@element-plus/icons-vue'
+import { getUserProfile } from '@/api/system/user'
+import { getAllAssignments } from '@/services/assignmentService'
 
-/* ===== Mock 数据（客户 -> 项目） ===== */
-const customers = [
-  { customerId: 'C-ZW', customerName: '专网', projects: [
-    { projectId: 'P-ZW-LOGIN', projectName: '综合登录&智能运维' },
-    { projectId: 'P-ZW-DEVICE', projectName: '设备资源&线路资源' }
-  ]},
-  { customerId: 'C-CM', customerName: '中国移动', projects: [ { projectId: 'P-RCMP', projectName: 'RCMP' } ] },
-  { customerId: 'C-PROV', customerName: '省项目', projects: [
-    { projectId: 'P-SH', projectName: '上海重接' },
-    { projectId: 'P-ZJ', projectName: '浙江运控中心' }
-  ]},
-  { customerId: 'C-INTERNAL', customerName: '内部', projects: [
-    { projectId: 'P-LEARN', projectName: '学习时间' },
-    { projectId: 'P-HG2', projectName: '设备网管' }
-  ]},
-  { customerId: 'C-HOL', customerName: '休假', projects: [ { projectId: 'P-HOL', projectName: '休假' } ] }
-]
+/* ===== 动态数据（服务获取：客户 -> 项目） ===== */
+const customers = ref([]) // [{ customerId, customerName, projects:[{projectId, projectName}] }]
+const projectRanges = reactive({}) // { projectId: { start: Date|null, end: Date|null } }
+const assignmentsRaw = ref([])
 
 /* ===== 状态 ===== */
 const selectedDate = ref(new Date())
-const showWeekend = ref(true)
+const showWeekend = ref(false)
 const comment = ref('')
-const hours = reactive({})
-customers.forEach(c => c.projects.forEach(p => { hours[p.projectId] = {} }))
+const hours = reactive({})        // { projectId: { '2025-08-22': 8 } }
+const comments = reactive({})     // { projectId: { '2025-08-22': '说明' } }
 
-/* ===== 评论存储 ===== */
-const comments = reactive({})
-customers.forEach(c=> c.projects.forEach(p=> { comments[p.projectId] = {} }))
+function parseDate(val){
+  if(!val) return null
+  // 仅取前10位，兼容 '2025-08-22 00:00:00'
+  const s = String(val).slice(0,10)
+  const d = new Date(s.replace(/-/g,'/'))
+  return isNaN(d.getTime()) ? null : d
+}
 
+function inRange(range,date){
+  if(!range) return true
+  const { start, end } = range
+  if(start && date < start) return false
+  if(end && date > end) return false
+  return true
+}
+
+function isAllowed(pid, date){
+  const r = projectRanges[pid]
+  return inRange(r, date)
+}
+
+function buildCustomersFromAssignments(list) {
+  const filtered = (list || []).filter(a =>
+    (a.isActiveAssignment === 1 || a.isActiveAssignment === '1') &&
+    (a.isActiveCustomer === 1 || a.isActiveCustomer === '1') &&
+    (a.isActive === 1 || a.isActive === '1')
+  )
+  // 清空旧范围
+  Object.keys(projectRanges).forEach(k=> delete projectRanges[k])
+  const map = new Map()
+  filtered.forEach(a => {
+    // 记录时间范围
+    projectRanges[a.projectId] = {
+      start: parseDate(a.dateStart),
+      end: parseDate(a.dateEnd)
+    }
+    const cid = a.customerId || 'UNKNOWN'
+    if (!map.has(cid)) {
+      map.set(cid, { customerId: cid, customerName: a.customerName || cid, projects: [] })
+    }
+    const entry = map.get(cid)
+    if (!entry.projects.find(p => p.projectId === a.projectId)) {
+      entry.projects.push({ projectId: a.projectId, projectName: a.projectName })
+    }
+  })
+  return Array.from(map.values())
+}
+
+function initStructures() {
+  // 重建 hours / comments（保留已有数据的话可改为增量）
+  Object.keys(hours).forEach(k => delete hours[k])
+  Object.keys(comments).forEach(k => delete comments[k])
+  customers.value.forEach(c => c.projects.forEach(p => {
+    if (!hours[p.projectId]) hours[p.projectId] = {}
+    if (!comments[p.projectId]) comments[p.projectId] = {}
+  }))
+}
+
+/* ===== 编辑备注对话框 ===== */
 const editing = ref({ open:false, projectId:'', date:null, text:'' })
 const editingTitle = computed(()=>{
   if(!editing.value.date) return '备注'
@@ -179,10 +228,7 @@ function formatMD(d){ return `${d.getMonth()+1}/${d.getDate()}` }
 function weekday(d){ return ['周一','周二','周三','周四','周五','周六','周日'][ (d.getDay()||7)-1 ] }
 function isWeekend(d){ const g=d.getDay(); return g===0||g===6 }
 function projectNameById(pid){
-  for(const c of customers){
-    const f = c.projects.find(p=>p.projectId===pid)
-    if(f) return f.projectName
-  }
+  for(const c of customers.value){ const f = c.projects.find(p=>p.projectId===pid); if(f) return f.projectName }
   return pid
 }
 
@@ -191,21 +237,14 @@ const weekDates = computed(()=>{ const start = startOfWeek(selectedDate.value); 
 const weekRangeLabel = computed(()=>`${formatMD(weekDates.value[0])} ~ ${formatMD(weekDates.value[weekDates.value.length-1])}`)
 
 /* ===== 表格数据 ===== */
-const tableRows = computed(()=>{ const rows=[]; customers.forEach(c=> c.projects.forEach(p=> rows.push({ customerId:c.customerId, customerName:c.customerName, projectId:p.projectId, projectName:p.projectName })) ); return rows })
+const tableRows = computed(()=>{ const rows=[]; customers.value.forEach(c=> c.projects.forEach(p=> rows.push({ customerId:c.customerId, customerName:c.customerName, projectId:p.projectId, projectName:p.projectName })) ); return rows })
 function spanMethod({ column, rowIndex, row }) { if(column.property==='customerName'){ const id=row.customerId; let first=-1,count=0; tableRows.value.forEach((r,i)=>{ if(r.customerId===id){ if(first<0) first=i; count++ } }); if(rowIndex===first) return {rowspan:count,colspan:1}; return {rowspan:0,colspan:0} } }
 
 /* ===== 汇总 ===== */
-function rowTotal(pid){ return weekDates.value.reduce((s,d)=>{ const v=parseFloat(hours[pid][dateKey(d)]); return s+(isNaN(v)?0:v)},0) }
-function dayTotal(d){ const k=dateKey(d); return Object.keys(hours).reduce((s,pid)=>{ const v=parseFloat(hours[pid][k]); return s+(isNaN(v)?0:v)},0) }
+function rowTotal(pid){ return weekDates.value.reduce((s,d)=>{ const v=parseFloat(hours[pid]?.[dateKey(d)]); return s+(isNaN(v)?0:v)},0) }
+function dayTotal(d){ const k=dateKey(d); return Object.keys(hours).reduce((s,pid)=>{ const v=parseFloat(hours[pid]?.[k]); return s+(isNaN(v)?0:v)},0) }
 const grandTotal = computed(()=> weekDates.value.reduce((s,d)=> s+dayTotal(d),0))
-function summaryMethod(){
-  const sums = []
-  sums[0] = '日合计'
-  sums[1] = ''
-  weekDates.value.forEach((d,i)=>{ sums[2+i] = dayTotal(d).toFixed(1) })
-  sums[2 + weekDates.value.length] = grandTotal.value.toFixed(1)
-  return sums
-}
+function summaryMethod(){ const sums = []; sums[0]='日合计'; sums[1]=''; weekDates.value.forEach((d,i)=>{ sums[2+i]=dayTotal(d).toFixed(1) }); sums[2+weekDates.value.length]=grandTotal.value.toFixed(1); return sums }
 
 /* ===== Actions ===== */
 function shiftWeek(n){ selectedDate.value = addDays(selectedDate.value, n*7) }
@@ -217,21 +256,26 @@ function shortWeekday(d){ return ['一','二','三','四','五','六','日'][ (d
 function weekdayHeader(d){ return `${weekday(d)}\n${formatMD(d)}` }
 function rowCls(){ return 'data-row' }
 
-function openComment(pid,d){
-  editing.value.projectId = pid
-  editing.value.date = new Date(d)
-  editing.value.text = comments[pid]?.[dateKey(d)] || ''
-  editing.value.open = true
-}
-function saveEditing(){
-  const key = dateKey(editing.value.date)
-  if(!comments[editing.value.projectId]) comments[editing.value.projectId] = {}
-  comments[editing.value.projectId][key] = editing.value.text.trim()
-  if(!comments[editing.value.projectId][key]) delete comments[editing.value.projectId][key]
-  editing.value.open = false
-}
+function openComment(pid,d){ editing.value.projectId = pid; editing.value.date = new Date(d); editing.value.text = comments[pid]?.[dateKey(d)] || ''; editing.value.open = true }
+function saveEditing(){ const key = dateKey(editing.value.date); if(!comments[editing.value.projectId]) comments[editing.value.projectId] = {}; comments[editing.value.projectId][key] = editing.value.text.trim(); if(!comments[editing.value.projectId][key]) delete comments[editing.value.projectId][key]; editing.value.open = false }
 function clearEditing(){ editing.value.text=''; saveEditing() }
 function hasComment(pid,d){ return !!comments[pid]?.[dateKey(d)] }
+
+/* ===== 动态获取当前用户项目（默认 + 分配） ===== */
+onMounted(async () => {
+  try {
+    const prof = await getUserProfile()
+    const uid = prof?.data?.userId
+    if(!uid) return
+    const list = await getAllAssignments(uid)
+    assignmentsRaw.value = list
+    console.log('[fillform] assignments merged =>', list)
+    customers.value = buildCustomersFromAssignments(list)
+    initStructures()
+  } catch (e) {
+    console.error('加载用户项目失败:', e)
+  }
+})
 </script>
 
 <style scoped>
@@ -284,4 +328,6 @@ function hasComment(pid,d){ return !!comments[pid]?.[dateKey(d)] }
 .legend-card{--el-card-padding:10px;font-size:15px;background:#ffffff;border-radius:10px;box-shadow:0 2px 4px rgba(31,35,41,0.04);min-height:210px;display:flex;flex-direction:column;justify-content:flex-start;}
 .legend-list{padding:2px 0 2px 16px;margin:0;line-height:1.3;}
 .legend-list li{margin:2px 0;}
+.disabled-cell{background:#f5f5f5 !important;}
+.range-blocked{font-size:12px;color:#999;}
 </style>
