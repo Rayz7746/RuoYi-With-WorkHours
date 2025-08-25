@@ -29,10 +29,15 @@
               <el-icon><ArrowRight /></el-icon>
             </el-button>
             <span class="week-range">{{ weekRangeLabel }}</span>
+            <div class="week-total-summary">
+              <span>周总计 (含周末):</span>
+              <strong>{{ grandTotalFullWeek.toFixed(1) }}</strong>
+            </div>
           </div>
           <div class="right-actions">
-            <el-button size="small" @click="clearWeek" type="warning" plain>清空本周</el-button>
-            <el-button size="small" @click="resetAll" type="danger" plain>全部清零</el-button>
+            <!-- 新增: 确认后保存 / 重置 -->
+            <el-button size="small" plain :disabled="savingAll" @click="confirmResetUnsaved">重置未保存</el-button>
+            <el-button size="small" type="primary" :loading="savingAll" @click="confirmSaveAll">保存全部</el-button>
           </div>
         </div>
       </el-card>
@@ -90,6 +95,21 @@
                       <el-icon><ChatDotRound /></el-icon>
                     </el-button>
                   </el-tooltip>
+                 <el-tooltip
+                   content="删除该日数据"
+                   placement="bottom"
+                   :show-after="300"
+                 >
+                   <el-button
+                     link
+                     size="small"
+                     class="delete-btn"
+                     type="danger"
+                     @click.stop="askDeleteCell(row.projectId,d)"
+                   >
+                     <el-icon><Delete /></el-icon>
+                   </el-button>
+                 </el-tooltip>
                 </template>
                 <template v-else>
                   <span class="range-blocked">不可填报</span>
@@ -132,6 +152,52 @@
           </div>
         </template>
       </el-dialog>
+
+      <!-- 保存确认弹窗 -->
+      <el-dialog v-model="confirmDialog.open" width="360px" append-to-body :close-on-click-modal="false" :show-close="false">
+        <template #header>
+          <span>确认保存</span>
+        </template>
+        <div>是否确认保存当前所有修改的工时与备注？</div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button size="small" @click="confirmDialog.open=false" :disabled="savingAll">取 消</el-button>
+            <el-button size="small" type="primary" :loading="savingAll" @click="runSaveAll">确 认</el-button>
+          </div>
+        </template>
+      </el-dialog>
+      <!-- 重置确认弹窗 -->
+      <el-dialog v-model="resetDialog.open" width="360px" append-to-body :close-on-click-modal="false" :show-close="false">
+        <template #header>
+          <span>确认重置</span>
+        </template>
+        <div>确定要放弃本次未保存的修改并还原到上次加载/保存状态吗？</div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button size="small" @click="resetDialog.open=false" :disabled="savingAll">取 消</el-button>
+            <el-button size="small" type="warning" @click="runResetUnsaved" :disabled="savingAll">确 认</el-button>
+          </div>
+        </template>
+      </el-dialog>
+
+      <!-- 删除确认弹窗 -->
+      <el-dialog v-model="deleteDialog.open" width="360px" append-to-body :close-on-click-modal="false" :show-close="false">
+        <template #header>
+          <span>确认删除</span>
+        </template>
+        <div>
+          确定要删除
+          <strong>{{ deletingCellLabel }}</strong>
+          的工时与备注吗？<br/>
+          已保存的记录将立即从服务器删除；未保存的修改将被直接清除。
+        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button size="small" @click="deleteDialog.open=false" :disabled="deleteDialog.loading">取 消</el-button>
+            <el-button size="small" type="danger" @click="runDeleteCell" :loading="deleteDialog.loading">删 除</el-button>
+          </div>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -140,8 +206,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import WeekCalendar from './WeekCalendar.vue'
 import { ArrowLeft, ArrowRight, ChatDotRound } from '@element-plus/icons-vue'
+import { Delete } from '@element-plus/icons-vue'
 import { getUserProfile } from '@/api/system/user'
 import { getAllAssignments } from '@/services/assignmentService'
+import { addAttendance, updateAttendance, listAttendance, delAttendance } from '@/api/work/attendance'
+import { ElMessage } from 'element-plus'
+import { getCurrentInstance } from 'vue'
+
+const { proxy } = getCurrentInstance() || {}
 
 /* ===== 动态数据（服务获取：客户 -> 项目） ===== */
 const customers = ref([]) // [{ customerId, customerName, projects:[{projectId, projectName}] }]
@@ -154,6 +226,10 @@ const showWeekend = ref(false)
 const comment = ref('')
 const hours = reactive({})        // { projectId: { '2025-08-22': 8 } }
 const comments = reactive({})     // { projectId: { '2025-08-22': '说明' } }
+const attendanceIds = reactive({}) // { projectId: { '2025-08-22': attendanceId } }
+// 保存中状态
+const savingAll = ref(false)
+let currentUserId = null
 
 function parseDate(val){
   if(!val) return null
@@ -204,12 +280,14 @@ function buildCustomersFromAssignments(list) {
 }
 
 function initStructures() {
-  // 重建 hours / comments（保留已有数据的话可改为增量）
+  // 重建 hours / comments / attendanceIds
   Object.keys(hours).forEach(k => delete hours[k])
   Object.keys(comments).forEach(k => delete comments[k])
+  Object.keys(attendanceIds).forEach(k => delete attendanceIds[k])
   customers.value.forEach(c => c.projects.forEach(p => {
     if (!hours[p.projectId]) hours[p.projectId] = {}
     if (!comments[p.projectId]) comments[p.projectId] = {}
+    if (!attendanceIds[p.projectId]) attendanceIds[p.projectId] = {}
   }))
 }
 
@@ -223,7 +301,10 @@ const editingTitle = computed(()=>{
 /* ===== 工具函数 ===== */
 function startOfWeek(d) { const tmp = new Date(d); let g = tmp.getDay() || 7; tmp.setDate(tmp.getDate() - (g - 1)); tmp.setHours(0,0,0,0); return tmp }
 function addDays(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd }
-function dateKey(d){ return d.toISOString().slice(0,10) }
+function dateKey(d){ // 覆盖: 避免时区偏移, 使用本地日期
+  const y = d.getFullYear(); const m = (d.getMonth()+1).toString().padStart(2,'0'); const dd = d.getDate().toString().padStart(2,'0');
+  return `${y}-${m}-${dd}`
+}
 function formatMD(d){ return `${d.getMonth()+1}/${d.getDate()}` }
 function weekday(d){ return ['周一','周二','周三','周四','周五','周六','周日'][ (d.getDay()||7)-1 ] }
 function isWeekend(d){ const g=d.getDay(); return g===0||g===6 }
@@ -244,13 +325,16 @@ function spanMethod({ column, rowIndex, row }) { if(column.property==='customerN
 function rowTotal(pid){ return weekDates.value.reduce((s,d)=>{ const v=parseFloat(hours[pid]?.[dateKey(d)]); return s+(isNaN(v)?0:v)},0) }
 function dayTotal(d){ const k=dateKey(d); return Object.keys(hours).reduce((s,pid)=>{ const v=parseFloat(hours[pid]?.[k]); return s+(isNaN(v)?0:v)},0) }
 const grandTotal = computed(()=> weekDates.value.reduce((s,d)=> s+dayTotal(d),0))
+const grandTotalFullWeek = computed(() => {
+  const start = startOfWeek(selectedDate.value);
+  const fullWeekDates = Array.from({length: 7}, (_, i) => addDays(start, i));
+  return fullWeekDates.reduce((s, d) => s + dayTotal(d), 0);
+});
 function summaryMethod(){ const sums = []; sums[0]='日合计'; sums[1]=''; weekDates.value.forEach((d,i)=>{ sums[2+i]=dayTotal(d).toFixed(1) }); sums[2+weekDates.value.length]=grandTotal.value.toFixed(1); return sums }
 
 /* ===== Actions ===== */
 function shiftWeek(n){ selectedDate.value = addDays(selectedDate.value, n*7) }
 function jumpToday(){ selectedDate.value = new Date() }
-function clearWeek(){ weekDates.value.forEach(d=>{ const k=dateKey(d); Object.values(hours).forEach(h=>{ delete h[k] }) }) }
-function resetAll(){ Object.keys(hours).forEach(pid=> hours[pid] = {}) }
 function onPickWeek(start){ selectedDate.value = new Date(start) }
 function shortWeekday(d){ return ['一','二','三','四','五','六','日'][ (d.getDay()||7)-1 ] }
 function weekdayHeader(d){ return `${weekday(d)}\n${formatMD(d)}` }
@@ -261,20 +345,211 @@ function saveEditing(){ const key = dateKey(editing.value.date); if(!comments[ed
 function clearEditing(){ editing.value.text=''; saveEditing() }
 function hasComment(pid,d){ return !!comments[pid]?.[dateKey(d)] }
 
+/* ===== 考勤（加载 / 保存） ===== */
+async function loadAttendanceAll() {
+  if(!currentUserId) return
+  try {
+    // 拉取当前用户全部(设较大页大小)，后端若有分页限制可循环，这里先简单处理
+    const resp = await listAttendance({ pageNum:1, pageSize:1000, userId: currentUserId })
+    const rows = resp?.rows || []
+    rows.forEach(r => {
+      const pid = r.projectId || r.project?.projectId || r.project?.id
+      if(!pid) return
+      if(!hours[pid]) hours[pid] = {}
+      if(!comments[pid]) comments[pid] = {}
+      if(!attendanceIds[pid]) attendanceIds[pid] = {}
+      const dkey = r.attendanceDate?.slice(0,10)
+      if(!dkey) return
+      hours[pid][dkey] = parseFloat(r.workingHours)
+      if(r.comment) comments[pid][dkey] = r.comment
+      attendanceIds[pid][dkey] = r.attendanceId
+    })
+    updateBaseline()
+  } catch(e){
+    console.error('加载考勤失败', e)
+  }
+}
+
+const baselineHours = reactive({})
+const baselineComments = reactive({})
+const baselineAttendanceIds = reactive({})
+
+function cloneToReactive(src, dest){
+  // 清空目标
+  Object.keys(dest).forEach(k=> delete dest[k])
+  Object.keys(src||{}).forEach(k=> {
+    // 深拷贝简单对象
+    dest[k] = JSON.parse(JSON.stringify(src[k]))
+  })
+}
+function updateBaseline(){
+  // 将当前数据快照到 baseline
+  cloneToReactive(hours, baselineHours)
+  cloneToReactive(comments, baselineComments)
+  cloneToReactive(attendanceIds, baselineAttendanceIds)
+}
+function restoreFromBaseline(){
+  cloneToReactive(baselineHours, hours)
+  cloneToReactive(baselineComments, comments)
+  cloneToReactive(baselineAttendanceIds, attendanceIds)
+}
+function resetUnsaved(){
+  if(savingAll.value) return
+  if(Object.keys(baselineHours).length===0){
+    ElMessage.info('暂无可重置数据')
+    return
+  }
+  restoreFromBaseline()
+  ElMessage.success('已还原到上次加载/保存状态')
+}
+
+async function saveAll(){
+  if(savingAll.value) return
+  savingAll.value = true
+  try {
+    const tasks = []
+    // 遍历所有项目日期
+    Object.keys(hours).forEach(pid => {
+      const dayMap = hours[pid]
+      Object.keys(dayMap).forEach(dkey => {
+        const val = dayMap[dkey]
+        const note = comments[pid]?.[dkey]
+        if(val == null && !note) return // 没有内容不提交
+        const attendanceId = attendanceIds[pid]?.[dkey]
+        const payload = {
+          attendanceId: attendanceId || null,
+            projectId: pid,
+            userId: currentUserId,
+            attendanceDate: dkey,
+            workingHours: val ?? 0,
+            comment: note || null
+        }
+        if(attendanceId){
+          tasks.push(updateAttendance(payload))
+        } else {
+          tasks.push(addAttendance(payload).then(res=>{ // 记录新ID
+            const newId = res?.data?.attendanceId || res?.data?.id
+            if(newId){
+              if(!attendanceIds[pid]) attendanceIds[pid] = {}
+              attendanceIds[pid][dkey] = newId
+            }
+          }))
+        }
+      })
+    })
+    if(tasks.length===0){
+      ElMessage.info('无需要保存的数据')
+    } else {
+      await Promise.all(tasks)
+      ElMessage.success('保存成功')
+      updateBaseline() // 保存成功后更新基线
+      // 可选择刷新：await loadAttendanceAll()
+    }
+  } catch(e){
+    console.error('保存失败', e)
+    ElMessage.error('保存失败')
+  } finally {
+    savingAll.value = false
+  }
+}
+
 /* ===== 动态获取当前用户项目（默认 + 分配） ===== */
 onMounted(async () => {
   try {
     const prof = await getUserProfile()
     const uid = prof?.data?.userId
+    currentUserId = uid
     if(!uid) return
     const list = await getAllAssignments(uid)
     assignmentsRaw.value = list
     console.log('[fillform] assignments merged =>', list)
     customers.value = buildCustomersFromAssignments(list)
     initStructures()
-  } catch (e) {
+    await loadAttendanceAll()
+  } catch ( e ) {
     console.error('加载用户项目失败:', e)
   }
+})
+
+const confirmDialog = reactive({ open:false })
+const resetDialog = reactive({ open:false })
+const deleteDialog = reactive({ open:false, projectId:null, date:null, loading:false })
+
+function confirmSaveAll(){
+  if(savingAll.value) return
+  confirmDialog.open = true
+}
+async function runSaveAll(){
+  await saveAll()
+  confirmDialog.open = false
+}
+function confirmResetUnsaved(){
+  if(savingAll.value) return
+  if(Object.keys(baselineHours).length===0){
+    ElMessage.info('暂无可重置数据')
+    return
+  }
+  resetDialog.open = true
+}
+function runResetUnsaved(){
+  resetDialog.open = false
+  resetUnsaved()
+}
+function askDeleteCell(pid, d){
+  deleteDialog.projectId = pid
+  deleteDialog.date = new Date(d)
+  deleteDialog.open = true
+}
+function deleteCellData(pid, date){
+   const key = dateKey(date)
+   const hasId = attendanceIds[pid]?.[key]
+   // 清除备注
+   if(comments[pid]) delete comments[pid][key]
+   if(hasId){
+    // 旧逻辑保留（一般不会走到：直接删除时已单独处理）
+    if(hours[pid]) delete hours[pid][key]
+    if(attendanceIds[pid]) delete attendanceIds[pid][key]
+   } else {
+     // 未保存：直接移除
+     if(hours[pid]) delete hours[pid][key]
+   }
+  ElMessage.success('已清除未保存数据')
+}
+async function runDeleteCell(){
+  if(!deleteDialog.projectId || !deleteDialog.date){
+    deleteDialog.open = false
+    return
+  }
+  const pid = deleteDialog.projectId
+  const key = dateKey(deleteDialog.date)
+  const attendanceId = attendanceIds[pid]?.[key]
+  // 若存在已保存记录，直接请求后端删除
+  if(attendanceId){
+    deleteDialog.loading = true
+    try {
+      await delAttendance(attendanceId)
+      // 移除本地数据
+      if(hours[pid]) delete hours[pid][key]
+      if(comments[pid]) delete comments[pid][key]
+      if(attendanceIds[pid]) delete attendanceIds[pid][key]
+      ElMessage.success('删除成功')
+      updateBaseline()
+    } catch(e){
+      console.error('删除失败', e)
+      ElMessage.error('删除失败')
+    } finally {
+      deleteDialog.loading = false
+      deleteDialog.open = false
+    }
+  } else {
+    // 未保存数据，仅本地清除
+    deleteCellData(pid, deleteDialog.date)
+    deleteDialog.open = false
+  }
+}
+const deletingCellLabel = computed(()=>{
+  if(!deleteDialog.date) return ''
+  return `${projectNameById(deleteDialog.projectId)} ${formatMD(deleteDialog.date)}`
 })
 </script>
 
@@ -288,6 +563,23 @@ onMounted(async () => {
 .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
 .left-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .week-range{font-weight:600;font-size:14px;color:#2c3e50;padding:4px 10px;background:#f2f6fc;border:1px solid #e3e8ef;border-radius:20px;}
+.week-total-summary{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #606266;
+  margin-left: 12px;
+  padding: 4px 10px;
+  background: #f9f9f9;
+  border: 1px solid #e9e9eb;
+  border-radius: 20px;
+}
+.week-total-summary strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
 .nav-btn{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #d9e2ec !important;}
 .nav-btn.prev .el-icon, .nav-btn.next .el-icon{font-size:14px;}
 .nav-btn.today{font-weight:600;}
@@ -312,6 +604,10 @@ onMounted(async () => {
 .cell-wrapper.has-note .note-btn{opacity:1;}
 .note-btn:hover{opacity:1;transform:scale(1.05);} 
 .note-btn :deep(.el-icon){font-size:16px;}
+/* 新增删除按钮（位于备注按钮下方） */
+.delete-btn{position:absolute;right:4px;top:28px;opacity:.55;transition:opacity .2s, transform .2s;}
+.delete-btn:hover{opacity:1;transform:scale(1.05);}
+.delete-btn :deep(.el-icon){font-size:16px;}
 .cell-comment-dialog :deep(.el-dialog__body){padding-top:4px;}
 .dialog-footer{display:flex;justify-content:flex-end;gap:8px;}
 .row-total.badge{display:inline-block;background:#eef5ff;border:1px solid #c7dfff;padding:4px 10px;border-radius:16px;font-weight:600;color:#1d5fbf;min-width:52px;text-align:center;font-size:14px;}
@@ -330,4 +626,5 @@ onMounted(async () => {
 .legend-list li{margin:2px 0;}
 .disabled-cell{background:#f5f5f5 !important;}
 .range-blocked{font-size:12px;color:#999;}
+.right-actions .el-button+.el-button{margin-left:8px;}
 </style>
