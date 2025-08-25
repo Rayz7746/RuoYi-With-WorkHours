@@ -1,50 +1,63 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" label-width="90px" class="attendance-search">
-      <!-- 客户（驱动项目联动） -->
-      <el-form-item label="客户" prop="customerId">
+      <!-- 客户（多选） -->
+      <el-form-item label="客户" prop="customerIds">
         <el-select-v2
-          v-model="queryParams.customerId"
+          v-model="queryParams.customerIds"
           :options="customerOptionsV2"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
           filterable
-          clearable
-          placeholder="请选择客户"
+            clearable
+          placeholder="请选择客户(可多选)"
           style="width: 260px"
         />
       </el-form-item>
 
-      <!-- 项目（由客户筛选） -->
-      <el-form-item label="项目" prop="projectId">
+      <!-- 项目（受客户多选联动，多选） -->
+      <el-form-item label="项目" prop="projectIds">
         <el-select-v2
-          v-model="queryParams.projectId"
+          v-model="queryParams.projectIds"
           :options="searchProjectOptionsV2"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
           filterable
           clearable
-          placeholder="请先选择客户，再选择项目"
+          placeholder="请选择项目(可多选)"
           style="width: 260px"
         />
       </el-form-item>
 
-      <!-- 项目人员 -->
-      <el-form-item label="项目人员" prop="userId">
+      <!-- 项目人员（多选） -->
+      <el-form-item label="项目人员" prop="userIds">
         <el-select-v2
-          v-model="queryParams.userId"
+          v-model="queryParams.userIds"
           :options="memberOptionsV2"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
           filterable
           clearable
-          placeholder="请选择项目人员"
+          placeholder="请选择项目人员(可多选)"
           style="width: 260px"
         />
       </el-form-item>
 
-      <!-- 考勤日期 -->
-      <el-form-item label="考勤日期" prop="attendanceDate">
+      <!-- 考勤日期范围 -->
+      <el-form-item label="日期范围">
         <el-date-picker
-          clearable
-          v-model="queryParams.attendanceDate"
-          type="date"
+          v-model="dateRange"
+          type="daterange"
+          unlink-panels
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
           value-format="YYYY-MM-DD"
-          placeholder="请选择考勤日期"
+          clearable
+          style="width: 260px"
         />
       </el-form-item>
 
@@ -55,21 +68,15 @@
     </el-form>
 
     <el-table v-loading="loading" :data="attendanceList">
-      <!-- 1. 项目客户 -->
       <el-table-column label="项目客户" align="center" prop="project.customer.customerName" />
-      <!-- 2. 项目名称 -->
       <el-table-column label="项目名称" align="center" prop="project.name" />
-      <!-- 3. 项目人员 -->
       <el-table-column label="项目人员" align="center" prop="user.nickName" />
-      <!-- 4. 考勤日期 -->
       <el-table-column label="考勤日期" align="center" prop="attendanceDate" width="180">
         <template #default="scope">
           <span>{{ parseTime(scope.row.attendanceDate, '{y}-{m}-{d}') }}</span>
         </template>
       </el-table-column>
-      <!-- 5. 工作时长 -->
       <el-table-column label="工作时长" align="center" prop="workingHours" />
-      <!-- 6. 考勤备注 -->
       <el-table-column label="考勤备注" align="center" prop="comment" />
     </el-table>
     
@@ -93,114 +100,82 @@ const { proxy } = getCurrentInstance()
 const attendanceList = ref([])
 const loading = ref(true)
 const total = ref(0)
+const dateRange = ref([]) // [begin,end]
 
 const data = reactive({
   queryParams: {
     pageNum: 1,
     pageSize: 10,
-    customerId: null,
-    projectId: null,
-    userId: null,
-    attendanceDate: null
+    customerIds: [],
+    projectIds: [],
+    userIds: []
   }
 })
 const { queryParams } = toRefs(data)
 
+function buildQueryParams() {
+  // 深拷贝，转换数组为逗号分隔字符串（后端如需改为 IN 需要相应支持）
+  const qp = JSON.parse(JSON.stringify(queryParams.value))
+  ;['customerIds','projectIds','userIds'].forEach(k => {
+    if (Array.isArray(qp[k]) && qp[k].length === 0) delete qp[k]
+    else if (Array.isArray(qp[k])) qp[k] = qp[k].join(',')
+  })
+  // 添加时间范围(beginTime/endTime)
+  return proxy.addDateRange(qp, dateRange.value)
+}
+
 function getList() {
   loading.value = true
-  listAttendance(queryParams.value).then(response => {
+  listAttendance(buildQueryParams()).then(response => {
     const rows = response.rows || []
     attendanceList.value = rows
     total.value = response.total
-  }).finally(() => {
-    loading.value = false
-  })
+  }).finally(() => { loading.value = false })
 }
-function handleQuery() {
-  queryParams.value.pageNum = 1
-  getList()
-}
+function handleQuery() { queryParams.value.pageNum = 1; getList() }
 function resetQuery() {
   proxy.resetForm("queryRef")
+  queryParams.value.customerIds = []
+  queryParams.value.projectIds = []
+  queryParams.value.userIds = []
+  dateRange.value = []
   handleQuery()
 }
 
-// 下拉：项目人员
-const memberOptions = ref(undefined)
-const enabledMemberOptions = ref(undefined)
-const memberOptionsV2 = computed(() => {
-  const list = enabledMemberOptions.value || []
-  return list.map(u => ({
-    value: u.userId ?? u.value,
-    label: u.nickName ?? u.label,
-    disabled: u.disabled === true || u.status === 1 || u.status === '1'
-  })).filter(o => o.value != null && o.label != null)
-})
-function getMemberSelectOption() {
-  userSelect().then(res => {
-    memberOptions.value = res.data || []
-    enabledMemberOptions.value = (memberOptions.value || []).filter(u => !(u?.disabled === true || u?.status === 1 || u?.status === '1'))
-  })
-}
+// 项目人员
+const memberOptions = ref()
+const enabledMemberOptions = ref()
+const memberOptionsV2 = computed(() => (enabledMemberOptions.value || []).map(u => ({ value: u.userId ?? u.value, label: u.nickName ?? u.label, disabled: u.disabled === true || u.status === 1 || u.status === '1' })).filter(o => o.value != null && o.label != null))
+function getMemberSelectOption() { userSelect().then(res => { memberOptions.value = res.data || []; enabledMemberOptions.value = (memberOptions.value || []).filter(u => !(u?.disabled === true || u?.status === 1 || u?.status === '1')) }) }
 
-// 下拉：客户
-const customerOptions = ref(undefined)
-const enabledCustomerOptions = ref(undefined)
-const customerOptionsV2 = computed(() => {
-  const list = enabledCustomerOptions.value || []
-  return list.map(c => ({
-    value: c.customerId ?? c.value,
-    label: c.customerName ?? c.label,
-    disabled: c.isActiveCustomer === 0 || c.disabled === true
-  })).filter(o => o.value != null && o.label != null)
-})
-function getCustomerSelectOption() {
-  customerSelect().then(res => {
-    const list = res.data || []
-    customerOptions.value = list
-    enabledCustomerOptions.value = (list || []).filter(c => !(c?.isActiveCustomer === 0 || c?.disabled === true))
-  })
-}
+// 客户
+const customerOptions = ref()
+const enabledCustomerOptions = ref()
+const customerOptionsV2 = computed(() => (enabledCustomerOptions.value || []).map(c => ({ value: c.customerId ?? c.value, label: c.customerName ?? c.label, disabled: c.isActiveCustomer === 0 || c.disabled === true })).filter(o => o.value != null && o.label != null))
+function getCustomerSelectOption() { customerSelect().then(res => { const list = res.data || []; customerOptions.value = list; enabledCustomerOptions.value = (list || []).filter(c => !(c?.isActiveCustomer === 0 || c?.disabled === true)) }) }
 
-// 项目
+// 项目（受多客户联动）
 const allProjects = ref([])
-function preloadAllProjects() {
-  projectNameSelect().then(res => {
-    allProjects.value = Array.isArray(res.data) ? res.data : []
-  })
-}
-function getProjectCustomerId(p) {
-  return p?.customerId ?? p?.customer?.customerId ?? p?.customer?.id ?? null
-}
+function preloadAllProjects() { projectNameSelect().then(res => { allProjects.value = Array.isArray(res.data) ? res.data : [] }) }
+function getProjectCustomerId(p) { return p?.customerId ?? p?.customer?.customerId ?? p?.customer?.id ?? null }
 const enabledSearchProjectOptions = ref([])
-const searchProjectOptionsV2 = computed(() => {
-  const list = enabledSearchProjectOptions.value || []
-  return list.map(p => ({
-    value: p.projectId ?? p.value,
-    label: p.name ?? p.label,
-    disabled: p.isActive === 0
-  })).filter(o => o.value != null && o.label != null)
-})
-function loadSearchProjectsByCustomer(customerId) {
-  if (!customerId) {
-    enabledSearchProjectOptions.value = []
-    return
-  }
-  const list = (allProjects.value || []).filter(p => String(getProjectCustomerId(p)) === String(customerId))
+const searchProjectOptionsV2 = computed(() => (enabledSearchProjectOptions.value || []).map(p => ({ value: p.projectId ?? p.value, label: p.name ?? p.label, disabled: p.isActive === 0 })).filter(o => o.value != null && o.label != null))
+function loadSearchProjectsByCustomers(customerIds) {
+  if (!Array.isArray(customerIds) || customerIds.length === 0) { enabledSearchProjectOptions.value = []; return }
+  const idSet = new Set(customerIds.map(String))
+  const list = (allProjects.value || []).filter(p => idSet.has(String(getProjectCustomerId(p))))
   enabledSearchProjectOptions.value = list.filter(p => !(p?.isActive === 0 || p?.disabled === true || p?.status === 0 || p?.status === '0'))
 }
-watch(() => queryParams.value.customerId, (cid) => {
-  queryParams.value.projectId = null
-  loadSearchProjectsByCustomer(cid)
-})
+watch(() => queryParams.value.customerIds, (cids) => {
+  queryParams.value.projectIds = []
+  loadSearchProjectsByCustomers(cids)
+}, { deep: true })
 
 onMounted(() => {
   getCustomerSelectOption()
   getMemberSelectOption()
   preloadAllProjects()
-  if (queryParams.value.customerId) {
-    loadSearchProjectsByCustomer(queryParams.value.customerId)
-  }
+  if (queryParams.value.customerIds.length) loadSearchProjectsByCustomers(queryParams.value.customerIds)
 })
 getList()
 </script>
