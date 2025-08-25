@@ -79,7 +79,6 @@
       <el-table-column label="工作时长" align="center" prop="workingHours" />
       <el-table-column label="考勤备注" align="center" prop="comment" />
     </el-table>
-    
     <pagination
       v-show="total>0"
       :total="total"
@@ -87,6 +86,8 @@
       v-model:limit="queryParams.pageSize"
       @pagination="getList"
     />
+    <!-- 图表移动到分页下方 -->
+    <div ref="customerHoursChart" class="customer-hours-chart" />
   </div>
 </template>
 
@@ -95,6 +96,7 @@ import { ref, reactive, toRefs, computed, watch, getCurrentInstance, onMounted }
 // 修改：使用 listAttendanceArray
 import { listAttendanceArray } from "@/api/work/attendance"
 import { userSelect, projectNameSelect, customerSelect } from "@/api/work/assignment"
+import VChart from '@visactor/vchart'
 
 const { proxy } = getCurrentInstance()
 
@@ -110,7 +112,6 @@ const data = reactive({
     customerIds: [],
     projectIds: [],
     userIds: [],
-    // 改名：后端期望 startTime / endTime
     startTime: '',
     endTime: ''
   }
@@ -140,11 +141,13 @@ watch(dateRange, (val) => {
 
 function getList() {
   loading.value = true
-  // 调用 listAttendanceArray 替换原 listAttendance
-  listAttendanceArray(buildQueryParams()).then(response => {
+  const builtParams = buildQueryParams()
+  listAttendanceArray(builtParams).then(response => {
     const rows = response.rows || []
     attendanceList.value = rows
     total.value = response.total
+    // 异步加载全量聚合
+    loadAllCustomerHours(builtParams)
   }).finally(() => { loading.value = false })
 }
 function handleQuery() { queryParams.value.pageNum = 1; getList() }
@@ -188,11 +191,84 @@ watch(() => queryParams.value.customerIds, (cids) => {
   loadSearchProjectsByCustomers(cids)
 }, { deep: true })
 
+const customerHoursChart = ref(null)
+let vchartInstance = null
+// 存储全量汇总后的客户工时（[{name,value}...]）
+const fullCustomerHours = ref([])
+let fullLoadingFlag = false
+
+async function loadAllCustomerHours(builtParams) {
+  if (fullLoadingFlag) return
+  fullLoadingFlag = true
+  try {
+    const pageSize = 500
+    let pageNum = 1
+    const map = new Map()
+    while (true) {
+      const resp = await listAttendanceArray({ ...builtParams, pageNum, pageSize })
+      const rows = resp?.rows || []
+      for (const row of rows) {
+        const name = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+        const hours = Number(row?.workingHours) || 0
+        map.set(name, (map.get(name) || 0) + hours)
+      }
+      const totalCount = resp?.total || 0
+      if (pageNum * pageSize >= totalCount || rows.length === 0) break
+      pageNum++
+    }
+    fullCustomerHours.value = Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value)
+  } catch (e) {
+    // 忽略错误
+  } finally { fullLoadingFlag = false }
+}
+
+function getCustomerHoursData() {
+  if (fullCustomerHours.value.length) return fullCustomerHours.value
+  // 回退：仅用当前页数据的临时聚合
+  const map = new Map()
+  for (const row of attendanceList.value) {
+    const name = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+    const hours = Number(row?.workingHours) || 0
+    map.set(name, (map.get(name) || 0) + hours)
+  }
+  return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value)
+}
+
+function renderCustomerHoursChart() {
+  if (!customerHoursChart.value) return
+  const values = getCustomerHoursData()
+  const spec = {
+    type: 'bar',
+    data: [{ id: 'barData', values }],
+    direction: 'horizontal',
+    xField: 'value',
+    yField: 'name',
+    axes: [
+      { orient: 'left', type: 'band', title: { text: '客户' } },
+      { orient: 'bottom', type: 'linear', title: { text: '工时 (Hours)' } }
+    ],
+    label: { visible: true, position: 'right', format: '{value}' },
+    animation: { appear: { animation: 'grow' } },
+    padding: { top: 10, right: 16, bottom: 30, left: 90 }
+  }
+  if (!vchartInstance) {
+    vchartInstance = new VChart(spec, { dom: customerHoursChart.value })
+    vchartInstance.renderSync()
+  } else {
+    vchartInstance.updateSpec(spec)
+    vchartInstance.renderSync()
+  }
+}
+
+watch(attendanceList, () => { renderCustomerHoursChart() }, { deep: true })
+watch(fullCustomerHours, () => { renderCustomerHoursChart() }, { deep: true })
+
 onMounted(() => {
   getCustomerSelectOption()
   getMemberSelectOption()
   preloadAllProjects()
   if (queryParams.value.customerIds.length) loadSearchProjectsByCustomers(queryParams.value.customerIds)
+  renderCustomerHoursChart()
 })
 getList()
 </script>
@@ -202,4 +278,5 @@ getList()
 .attendance-search .el-form-item { margin-right: 16px; margin-bottom: 10px; }
 .attendance-search :deep(.el-form-item__label) { font-weight: 500; }
 .attendance-search .el-input, .attendance-search .el-select { width: 260px; }
+.customer-hours-chart { height: 360px; margin: 16px 0 8px; }
 </style>
