@@ -3,6 +3,7 @@ package com.ruoyi.web.controller.work;
 import java.util.List;
 
 import com.ruoyi.system.domain.WorkAssignment;
+import com.ruoyi.system.domain.vo.WorkAttendanceQuery;
 import com.ruoyi.system.service.IWorkAssignmentService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,6 +50,15 @@ public class WorkAttendanceController extends BaseController
     {
         startPage();
         List<WorkAttendance> list = workAttendanceService.selectWorkAttendanceList(workAttendance);
+        return getDataTable(list);
+    }
+
+    @PreAuthorize("@ss.hasPermi('work:attendance:list')")
+    @GetMapping("/listArray")
+    public TableDataInfo listArray(WorkAttendanceQuery workAttendanceQuery)
+    {
+        startPage();
+        List<WorkAttendance> list = workAttendanceService.selectWorkAttendanceListArray(workAttendanceQuery);
         return getDataTable(list);
     }
 

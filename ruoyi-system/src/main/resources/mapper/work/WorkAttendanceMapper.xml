@@ -73,6 +73,46 @@
         </where>
     </select>
 
+    <select id="selectWorkAttendanceListArray" parameterType="WorkAttendanceQuery" resultMap="WorkAttendanceResult">
+        <include refid="selectWorkAttendanceVo"/>
+        <where>
+            <if test="userIds != null and userIds.length > 0">
+                and att.user_id in
+                <foreach collection="userIds" item="uid" open="(" separator="," close=")">
+                    #{uid}
+                </foreach>
+            </if>
+
+            <if test="projectIds != null and projectIds.length > 0">
+                and att.project_id in
+                <foreach collection="projectIds" item="pid" open="(" separator="," close=")">
+                    #{pid}
+                </foreach>
+            </if>
+
+            <if test="(projectIds == null or projectIds.length == 0)
+                  and customerIds != null and customerIds.length > 0">
+                and p.customer_id in
+                <foreach collection="customerIds" item="cid" open="(" separator="," close=")">
+                    #{cid}
+                </foreach>
+            </if>
+
+            <!-- 日期范围 -->
+            <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+                and att.attendance_date between #{startTime} and #{endTime}
+            </if>
+            <if test="startTime != null and startTime != '' and (endTime == null or endTime == '')">
+                and att.attendance_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != '' and (startTime == null or startTime == '')">
+                and att.attendance_date &lt;= #{endTime}
+            </if>
+        </where>
+        order by att.attendance_date desc
+    </select>
+
+
     <select id="selectWorkAttendanceByAttendanceId" parameterType="Long" resultMap="WorkAttendanceResult">
         <include refid="selectWorkAttendanceVo"/>
         where att.attendance_id = #{attendanceId}

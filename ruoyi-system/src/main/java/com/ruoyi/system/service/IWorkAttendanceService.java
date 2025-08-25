@@ -2,6 +2,7 @@ package com.ruoyi.system.service;
 
 import java.util.List;
 import com.ruoyi.system.domain.WorkAttendance;
+import com.ruoyi.system.domain.vo.WorkAttendanceQuery;
 
 /**
  * 考勤记录Service接口
@@ -26,6 +27,9 @@ public interface IWorkAttendanceService
      * @return 考勤记录集合
      */
     public List<WorkAttendance> selectWorkAttendanceList(WorkAttendance workAttendance);
+
+    public List<WorkAttendance> selectWorkAttendanceListArray(WorkAttendanceQuery workAttendanceQuery);
+
 
     /**
      * 新增考勤记录

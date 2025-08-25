@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.ruoyi.system.domain.WorkAssignment;
 import com.ruoyi.system.domain.WorkProject;
+import com.ruoyi.system.domain.vo.WorkAttendanceQuery;
 import com.ruoyi.system.service.IWorkProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,16 @@ public class WorkAttendanceServiceImpl implements IWorkAttendanceService
         }
         return workAttendances;
     }
+
+    @Override
+    public List<WorkAttendance> selectWorkAttendanceListArray(WorkAttendanceQuery workAttendanceQuery){
+        List<WorkAttendance> workAttendances = workAttendanceMapper.selectWorkAttendanceListArray(workAttendanceQuery);
+        for (WorkAttendance attendance : workAttendances) {
+            append(attendance);
+        }
+        return workAttendances;
+    }
+
 
     /**
      * 新增考勤记录

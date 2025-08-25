@@ -2,6 +2,7 @@ package com.ruoyi.system.mapper;
 
 import java.util.List;
 import com.ruoyi.system.domain.WorkAttendance;
+import com.ruoyi.system.domain.vo.WorkAttendanceQuery;
 
 /**
  * 考勤记录Mapper接口
@@ -26,6 +27,8 @@ public interface WorkAttendanceMapper
      * @return 考勤记录集合
      */
     public List<WorkAttendance> selectWorkAttendanceList(WorkAttendance workAttendance);
+
+    public List<WorkAttendance> selectWorkAttendanceListArray(WorkAttendanceQuery workAttendanceQuery);
 
     /**
      * 新增考勤记录

@@ -10,6 +10,11 @@ export function listAttendance(query) {
   return request({ url: '/work/attendance/list', method: 'get', params })
 }
 
+export function listAttendanceArray(query) {
+  const params = { ...query }
+  return request({ url: '/work/attendance/listArray', method: 'get', params })
+}
+
 // 查询考勤记录详细
 export function getAttendance(attendanceId) {
   return request({

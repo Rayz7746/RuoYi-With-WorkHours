@@ -92,7 +92,8 @@
 
 <script setup name="Attendance">
 import { ref, reactive, toRefs, computed, watch, getCurrentInstance, onMounted } from "vue"
-import { listAttendance } from "@/api/work/attendance"
+// 修改：使用 listAttendanceArray
+import { listAttendanceArray } from "@/api/work/attendance"
 import { userSelect, projectNameSelect, customerSelect } from "@/api/work/assignment"
 
 const { proxy } = getCurrentInstance()
@@ -108,25 +109,39 @@ const data = reactive({
     pageSize: 10,
     customerIds: [],
     projectIds: [],
-    userIds: []
+    userIds: [],
+    // 改名：后端期望 startTime / endTime
+    startTime: '',
+    endTime: ''
   }
 })
 const { queryParams } = toRefs(data)
 
 function buildQueryParams() {
-  // 深拷贝，转换数组为逗号分隔字符串（后端如需改为 IN 需要相应支持）
-  const qp = JSON.parse(JSON.stringify(queryParams.value))
-  ;['customerIds','projectIds','userIds'].forEach(k => {
-    if (Array.isArray(qp[k]) && qp[k].length === 0) delete qp[k]
-    else if (Array.isArray(qp[k])) qp[k] = qp[k].join(',')
-  })
-  // 添加时间范围(beginTime/endTime)
-  return proxy.addDateRange(qp, dateRange.value)
+  const qp = { ...queryParams.value }
+  // 移除空数组
+  ;['customerIds','projectIds','userIds'].forEach(k => { if (!Array.isArray(qp[k]) || qp[k].length === 0) delete qp[k] })
+  // 处理时间，空字符串不传
+  if (!qp.startTime) delete qp.startTime
+  if (!qp.endTime) delete qp.endTime
+  return qp
 }
+
+// 同步日期范围到 startTime / endTime
+watch(dateRange, (val) => {
+  if (Array.isArray(val) && val.length === 2) {
+    queryParams.value.startTime = val[0]
+    queryParams.value.endTime = val[1]
+  } else {
+    queryParams.value.startTime = ''
+    queryParams.value.endTime = ''
+  }
+})
 
 function getList() {
   loading.value = true
-  listAttendance(buildQueryParams()).then(response => {
+  // 调用 listAttendanceArray 替换原 listAttendance
+  listAttendanceArray(buildQueryParams()).then(response => {
     const rows = response.rows || []
     attendanceList.value = rows
     total.value = response.total
@@ -139,6 +154,8 @@ function resetQuery() {
   queryParams.value.projectIds = []
   queryParams.value.userIds = []
   dateRange.value = []
+  queryParams.value.startTime = ''
+  queryParams.value.endTime = ''
   handleQuery()
 }
 
