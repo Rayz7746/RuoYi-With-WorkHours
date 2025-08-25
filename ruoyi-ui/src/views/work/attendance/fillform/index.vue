@@ -560,9 +560,15 @@ const deletingCellLabel = computed(()=>{
 .main-side{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0;}
 
 /* Toolbar */
+.toolbar-card {
+  --el-card-padding: 14px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(31,35,41,0.04);
+}
 .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;}
 .left-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.week-range{font-weight:600;font-size:14px;color:#2c3e50;padding:4px 10px;background:#f2f6fc;border:1px solid #e3e8ef;border-radius:20px;}
+.week-range{font-weight:600;font-size:14px;color:#303133;padding:4px 12px;background:#f0f2f5;border:1px solid transparent;border-radius:16px;}
 .week-total-summary{
   display: flex;
   align-items: center;
@@ -570,20 +576,20 @@ const deletingCellLabel = computed(()=>{
   font-size: 13px;
   color: #606266;
   margin-left: 12px;
-  padding: 4px 10px;
-  background: #f9f9f9;
-  border: 1px solid #e9e9eb;
-  border-radius: 20px;
+  padding: 4px 12px;
+  background: #f0f2f5;
+  border: 1px solid transparent;
+  border-radius: 16px;
 }
 .week-total-summary strong {
   font-size: 14px;
   font-weight: 600;
   color: #303133;
 }
-.nav-btn{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #d9e2ec !important;}
+.nav-btn{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #dcdfe6 !important; color: #606266;}
 .nav-btn.prev .el-icon, .nav-btn.next .el-icon{font-size:14px;}
-.nav-btn.today{font-weight:600;}
-.nav-btn:hover{background:#f5f9ff;color:#409eff;}
+.nav-btn.today{font-weight:600; color: #409eff;}
+.nav-btn:hover{background:#ecf5ff;color:#409eff;}
 
 /* Table aesthetics */
 .hours-table{--cell-padding:8px 10px;}
