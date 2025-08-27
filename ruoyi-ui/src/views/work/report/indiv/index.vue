@@ -1,6 +1,6 @@
 <template>
   <div class="app-container individual-report">
-    <div class="report-header">
+    <div class="report-header unified-header">
       <h1>个人工时月报</h1>
       <div class="month-navigator">
         <el-button icon="ArrowLeft" circle @click="prevMonth"></el-button>
@@ -12,11 +12,13 @@
     <div v-if="loading" class="loading-container">正在加载数据...</div>
     <div v-if="error" class="error-container">错误：{{ error }}</div>
 
-    <div v-if="!loading && !error">
+    <div v-if="!loading && !error" class="content-layout">
       <!-- Aggregated Hours Summary -->
-      <div class="summary-section"> <!-- 移除 v-if，保证无数据时也显示表头与总计 -->
-        <h2 class="summary-title">月度工时汇总</h2>
-        <el-table :data="monthlySummary" style="width: 100%" show-summary :summary-method="getSummaries" :span-method="spanCustomerCell">
+      <div class="summary-section"> <!-- 统一风格 -->
+        <div class="summary-title-bar">
+          <h2 class="summary-title">月度工时汇总</h2>
+        </div>
+        <el-table class="summary-table" :data="monthlySummary" style="width: 100%" show-summary :summary-method="getSummaries" :span-method="spanCustomerCell" size="small" stripe :cell-class-name="summaryCellClass">
           <el-table-column prop="customerName" label="客户名称" />
           <el-table-column prop="projectName" label="项目名称" />
           <el-table-column prop="totalHours" label="工作时长 (小时)" align="right">
@@ -28,18 +30,23 @@
       </div>
 
       <!-- Calendar Grid -->
-      <div class="calendar-grid">
-        <div class="calendar-header" v-for="day in weekDays" :key="day">{{ day }}</div>
-        <div
-          v-for="day in calendarDays"
-          :key="day.date.toISOString()"
-          :class="['calendar-day', { 'not-current-month': !day.isCurrentMonth, 'is-today': day.isToday }]"
-        >
-          <div class="day-number">{{ day.date.getDate() }}</div>
-          <div class="day-entries" v-if="day.entries.length > 0">
-            <div v-for="entry in day.entries" :key="entry.attendanceId" class="entry">
-              <span class="entry-project">{{ entry.project.name }}</span>
-              <span class="entry-hours">{{ entry.workingHours }}h</span>
+      <div class="calendar-section">
+        <div class="section-title-bar">
+          <h2 class="section-title">当月日历</h2>
+        </div>
+        <div class="calendar-grid">
+          <div class="calendar-header" v-for="day in weekDays" :key="day">{{ day }}</div>
+          <div
+            v-for="day in calendarDays"
+            :key="day.date.toISOString()"
+            :class="['calendar-day', { 'not-current-month': !day.isCurrentMonth, 'is-today': day.isToday }]"
+          >
+            <div class="day-number">{{ day.date.getDate() }}</div>
+            <div class="day-entries" v-if="day.entries.length > 0">
+              <div v-for="entry in day.entries" :key="entry.attendanceId" class="entry">
+                <span class="entry-project" :title="entry.project.name">{{ entry.project.name }}</span>
+                <span class="entry-hours">{{ entry.workingHours }}h</span>
+              </div>
             </div>
           </div>
         </div>
@@ -259,6 +266,15 @@ onMounted(async () => {
     await fetchAttendanceData();
   }
 });
+
+function summaryCellClass({ column, rowIndex }) {
+  if (column.property === 'customerName') {
+    // 仅给实际渲染（rowspan>0）的单元格加样式
+    const span = customerSpanArr.value[rowIndex];
+    if (span > 0) return 'customer-col';
+  }
+  return '';
+}
 </script>
 
 <style scoped>
@@ -266,17 +282,26 @@ onMounted(async () => {
   padding: 20px;
 }
 
+/* 统一头部样式 */
+.unified-header {
+  background: linear-gradient(90deg,#f9fafb,#ffffff);
+  border: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
 .report-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
 }
 
 h1 {
   font-size: 24px;
   font-weight: 600;
   color: #333;
+  margin: 0;
 }
 
 .month-navigator {
@@ -288,26 +313,96 @@ h1 {
 .month-display {
   font-size: 18px;
   font-weight: 500;
-  width: 120px;
+  width: 140px;
   text-align: center;
 }
 
+/* 两栏布局（上：汇总 下：日历，移动端自动纵向） */
+.content-layout {
+  display: grid;
+  gap: 24px;
+}
+
+/* 汇总区块统一为卡片风格 */
 .summary-section {
-  margin-bottom: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.summary-title-bar {
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .summary-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin: 0;
+  color: #374151;
+}
+
+/* 日历容器外层与汇总一致 */
+.calendar-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.section-title-bar {
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #374151;
+}
+
+/* 表格与日历配色统一 */
+:deep(.summary-table .el-table__header th) {
+  background-color: #f9fafb !important;
+  color: #4b5563;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+:deep(.summary-table .el-table__body td) {
+  font-size: 13px;
+  color: #374151;
+}
+
+:deep(.summary-table .el-table__body tr:hover > td) {
+  background-color: #f0f9ff;
+}
+
+:deep(.summary-table .el-table__footer td) {
+  background-color: #f9fafb;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 替换原先 td:first-child 方式，避免行合并时误伤项目列 */
+:deep(.summary-table .customer-col) {
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
 }
 
 .calendar-header {
@@ -317,22 +412,32 @@ h1 {
   font-weight: 600;
   color: #4b5563;
   font-size: 14px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .calendar-day {
   min-height: 120px;
   padding: 8px;
   border-top: 1px solid #e5e7eb;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s;
+  background: #ffffff;
 }
 
 .calendar-day:not(:nth-child(7n+1)) {
-    border-left: 1px solid #e5e7eb;
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-day.is-today {
+  background: #eff6ff;
+}
+
+.calendar-day:hover {
+  background: #f0f9ff;
 }
 
 .not-current-month {
   background-color: #f9fafb;
-  color: #a0aec0;
+  color: #9ca3af;
 }
 
 .day-number {
@@ -378,6 +483,7 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-right: 8px;
+  max-width: 120px;
 }
 
 .entry-hours {
@@ -394,5 +500,21 @@ h1 {
 
 .error-container {
   color: #ef4444;
+}
+
+/* 响应式 */
+@media (min-width: 1100px) {
+  .content-layout {
+    grid-template-columns: 380px 1fr; /* 左侧汇总固定宽 */
+    align-items: start;
+  }
+  .summary-section { height: 100%; }
+  .calendar-section { height: 100%; }
+}
+
+:deep(.summary-table td.customer-col),
+:deep(.summary-table td.customer-col .cell) {
+  font-weight: 600 !important;
+  color: #1f2937 !important;
 }
 </style>
