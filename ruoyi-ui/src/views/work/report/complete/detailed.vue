@@ -84,7 +84,7 @@
       :total="total"
       v-model:page="queryParams.pageNum"
       v-model:limit="queryParams.pageSize"
-      @pagination="getList"
+      @pagination="onPageChange"
     />
     <!-- 图表移动到分页下方 -->
     <div ref="customerHoursChart" class="customer-hours-chart" />
@@ -133,28 +133,6 @@ function buildQueryParams() {
   return qp
 }
 
-// 同步日期范围到 startTime / endTime
-watch(dateRange, (val) => {
-  if (Array.isArray(val) && val.length === 2) {
-    queryParams.value.startTime = val[0]
-    queryParams.value.endTime = val[1]
-  } else {
-    queryParams.value.startTime = ''
-    queryParams.value.endTime = ''
-  }
-})
-
-function getList() {
-  loading.value = true
-  const builtParams = buildQueryParams()
-  listAttendanceArray(builtParams).then(response => {
-    const rows = response.rows || []
-    attendanceList.value = rows
-    total.value = response.total
-    loadAllRowsForChart(builtParams) // 改为加载全量给图表
-  }).finally(() => { loading.value = false })
-}
-
 // 全量加载当前筛选条件所有数据用于图表
 async function loadAllRowsForChart(builtParams) {
   try {
@@ -172,7 +150,35 @@ async function loadAllRowsForChart(builtParams) {
     buildStackedChartData(all)
   } catch (e) { console.error('加载全量失败', e) }
 }
-function handleQuery() { queryParams.value.pageNum = 1; getList() }
+function getList(skipChart = false) {
+  if (!Array.isArray(dateRange.value) || dateRange.value.length !== 2) return
+  loading.value = true
+  const builtParams = buildQueryParams()
+  listAttendanceArray(builtParams).then(response => {
+    const rows = response.rows || []
+    attendanceList.value = rows
+    total.value = response.total
+    if (!skipChart) {
+      loadAllRowsForChart(builtParams) // 仅在筛选变化时刷新图表
+    }
+  }).finally(() => { loading.value = false })
+}
+function onPageChange() { getList(true) }
+
+// 校验：必须先选日期
+function validateDateRange() {
+  if (!Array.isArray(dateRange.value) || dateRange.value.length !== 2 || !dateRange.value[0] || !dateRange.value[1]) {
+    proxy?.$modal?.msgError?.('请先选择日期范围 (最多 35 天)')
+    return false
+  }
+  return true
+}
+
+function handleQuery() {
+  if (!validateDateRange()) return
+  queryParams.value.pageNum = 1
+  getList(false)
+}
 function resetQuery() {
   proxy.resetForm("queryRef")
   queryParams.value.customerIds = []
@@ -298,29 +304,40 @@ function setCurrentMonthRange() {
   queryParams.value.endTime = last
 }
 
-// ================= 新增：限制日期只能选同一个月且最长 31 天 =================
-function enforceMonthRange(val) {
-  if (!Array.isArray(val) || val.length !== 2) return
+// ================= 新增：限制日期跨度最大 35 天（可跨月） =================
+const MAX_RANGE_DAYS = 35
+function enforceMaxRange(val) {
+  if (!Array.isArray(val) || val.length !== 2) return val
   const [start, end] = val
-  if (!start || !end) return
+  if (!start || !end) return val
   const s = new Date(start)
   const e = new Date(end)
-  // 不同月或超过 31 天则截断到 start 所在月份的月末
-  if (s.getMonth() !== e.getMonth() || (e - s) / 86400000 > 31) {
-    const month = s.getMonth()
-    const year = s.getFullYear()
-    const lastDay = new Date(year, month + 1, 0).getDate()
-    const fixedEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    dateRange.value = [start, fixedEnd]
-    proxy?.$modal?.msgWarning?.('最多只允许选择一个月范围，已自动截断到当月月底')
+  const diffDays = Math.floor((e - s) / 86400000) + 1 // 含首尾
+  if (diffDays > MAX_RANGE_DAYS) {
+    const fixedEndDate = new Date(s.getTime() + (MAX_RANGE_DAYS - 1) * 86400000)
+    const y = fixedEndDate.getFullYear()
+    const m = String(fixedEndDate.getMonth() + 1).padStart(2, '0')
+    const d = String(fixedEndDate.getDate()).padStart(2, '0')
+    const fixedEnd = `${y}-${m}-${d}`
+    const newRange = [start, fixedEnd]
+    // 同步 picker
+    dateRange.value = newRange
+    // 立即同步查询参数，避免 watch 第二次触发前用户点击“搜索”  
+    queryParams.value.startTime = newRange[0]
+    queryParams.value.endTime = newRange[1]
+    proxy?.$modal?.msgWarning?.(`日期范围最多 ${MAX_RANGE_DAYS} 天，已自动截断`)
+    return newRange
   }
+  return val
 }
 
 watch(dateRange, (val) => {
   if (Array.isArray(val) && val.length === 2) {
-    enforceMonthRange(val)
-    queryParams.value.startTime = val[0]
-    queryParams.value.endTime = val[1]
+    const finalRange = enforceMaxRange(val) // 保证获取截断后的最终值
+    if (finalRange && finalRange.length === 2) {
+      queryParams.value.startTime = finalRange[0]
+      queryParams.value.endTime = finalRange[1]
+    }
   } else {
     queryParams.value.startTime = ''
     queryParams.value.endTime = ''
@@ -334,7 +351,7 @@ onMounted(() => {
   getMemberSelectOption()
   preloadAllProjects()
   if (queryParams.value.customerIds.length) loadSearchProjectsByCustomers(queryParams.value.customerIds)
-  getList()
+  getList(false)
 })
 
 // ================= 新增：构建堆叠数据 (日期为 X，客户为 series) =================
@@ -542,9 +559,6 @@ function renderCustomerHoursChart() {
   }
   if (!vchartInstance) { vchartInstance = new VChart(spec, { dom: customerHoursChart.value }); vchartInstance.renderSync() } else { vchartInstance.updateSpec(spec); vchartInstance.renderSync() }
 }
-
-watch(attendanceList, () => { buildStackedChartData(attendanceList.value) }, { deep: true })
-watch(barWidth, () => { renderCustomerHoursChart() })
 </script>
 
 <style scoped>
