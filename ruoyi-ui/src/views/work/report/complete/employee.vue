@@ -143,7 +143,6 @@ function getList() {
   loading.value = true
   const builtParams = buildQueryParams()
   listAttendanceArray(builtParams).then(response => {
-    console.log('[employee.vue] listAttendanceArray response', response) // 调试输出后端返回
     const rows = response.rows || []
     attendanceList.value = rows
     total.value = response.total
@@ -212,7 +211,6 @@ async function loadAllEmployeeHours(builtParams) {
     while (true) {
       const resp = await listAttendanceArray({ ...builtParams, pageNum, pageSize })
       const rows = resp?.rows || []
-      console.log('[employee.vue] loadAllEmployeeHours page', pageNum, 'rows', rows.length)
       for (const row of rows) {
         const employeeName = extractEmployeeName(row)
         const projectName = row?.project?.name || row?.projectName || '未命名项目'
