@@ -67,7 +67,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table v-loading="loading" :data="attendanceList">
+    <el-table v-loading="loading" :data="attendanceList" class="compact-table">
       <el-table-column label="项目客户" align="center" prop="project.customer.customerName" />
       <el-table-column label="项目名称" align="center" prop="project.name" />
       <el-table-column label="项目人员" align="center" prop="user.nickName" />
@@ -156,9 +156,8 @@ function resetQuery() {
   queryParams.value.customerIds = []
   queryParams.value.projectIds = []
   queryParams.value.userIds = []
-  dateRange.value = []
-  queryParams.value.startTime = ''
-  queryParams.value.endTime = ''
+  // 重置为当前月
+  setCurrentMonthRange()
   handleQuery()
 }
 
@@ -195,6 +194,8 @@ const customerHoursChart = ref(null)
 let vchartInstance = null
 // 存储全量汇总后的客户工时（[{name,value}...]）
 const fullCustomerHours = ref([])
+// 新增：客户-项目明细（用于 hover 展示）[{ customer, project, value }]
+const fullCustomerProjectHours = ref([])
 let fullLoadingFlag = false
 
 async function loadAllCustomerHours(builtParams) {
@@ -203,74 +204,182 @@ async function loadAllCustomerHours(builtParams) {
   try {
     const pageSize = 500
     let pageNum = 1
-    const map = new Map()
+    const totalMap = new Map()                  // customer -> total hours
+    const cpMap = new Map()                     // key customer||project -> hours
     while (true) {
       const resp = await listAttendanceArray({ ...builtParams, pageNum, pageSize })
       const rows = resp?.rows || []
       for (const row of rows) {
-        const name = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+        const customer = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+        const project = row?.project?.name || row?.projectName || '未命名项目'
         const hours = Number(row?.workingHours) || 0
-        map.set(name, (map.get(name) || 0) + hours)
+        totalMap.set(customer, (totalMap.get(customer) || 0) + hours)
+        const key = customer + '||' + project
+        cpMap.set(key, (cpMap.get(key) || 0) + hours)
       }
       const totalCount = resp?.total || 0
       if (pageNum * pageSize >= totalCount || rows.length === 0) break
       pageNum++
     }
-    fullCustomerHours.value = Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value)
-  } catch (e) {
-    // 忽略错误
-  } finally { fullLoadingFlag = false }
+    fullCustomerHours.value = Array.from(totalMap.entries()).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value)
+    const projList = []
+    for (const [key, value] of cpMap.entries()) {
+      const [customer, project] = key.split('||')
+      projList.push({ customer, project, value })
+    }
+    // 排序：客户按总工时降序，客户内按项目工时降序
+    const customerOrder = fullCustomerHours.value.map(d => d.name)
+    const cIndex = new Map(customerOrder.map((c,i)=>[c,i]))
+    projList.sort((a,b)=>{ const ci = cIndex.get(a.customer) - cIndex.get(b.customer); return ci !== 0 ? ci : b.value - a.value })
+    fullCustomerProjectHours.value = projList
+  } catch (e) { /* ignore */ } finally { fullLoadingFlag = false }
 }
 
-function getCustomerHoursData() {
-  if (fullCustomerHours.value.length) return fullCustomerHours.value
-  // 回退：仅用当前页数据的临时聚合
-  const map = new Map()
+function buildProjectDataFromCurrentPage() {
+  const totalMap = new Map()
+  const cpMap = new Map()
   for (const row of attendanceList.value) {
-    const name = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+    const customer = row?.project?.customer?.customerName || row?.project?.customerName || '未分配'
+    const project = row?.project?.name || row?.projectName || '未命名项目'
     const hours = Number(row?.workingHours) || 0
-    map.set(name, (map.get(name) || 0) + hours)
+    totalMap.set(customer, (totalMap.get(customer) || 0) + hours)
+    const key = customer + '||' + project
+    cpMap.set(key, (cpMap.get(key) || 0) + hours)
   }
-  return Array.from(map.entries()).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value)
+  const totals = Array.from(totalMap.entries()).map(([name, value]) => ({ name, value }))
+  const projList = []
+  for (const [key, value] of cpMap.entries()) {
+    const [customer, project] = key.split('||')
+    projList.push({ customer, project, value })
+  }
+  const customerOrder = totals.sort((a,b)=>b.value-a.value).map(d=>d.name)
+  const cIndex = new Map(customerOrder.map((c,i)=>[c,i]))
+  projList.sort((a,b)=>{ const ci = cIndex.get(a.customer) - cIndex.get(b.customer); return ci !== 0 ? ci : b.value - a.value })
+  return { totals, projList }
+}
+
+function getProjectData() {
+  if (fullCustomerProjectHours.value.length) return { totals: fullCustomerHours.value, projList: fullCustomerProjectHours.value }
+  return buildProjectDataFromCurrentPage()
+}
+
+// 新增：封装当前月份范围设置（初始 & 重置使用）
+function setCurrentMonthRange() {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const first = `${year}-${String(month + 1).padStart(2,'0')}-01`
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  const last = `${year}-${String(month + 1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`
+  dateRange.value = [first, last]
+  queryParams.value.startTime = first
+  queryParams.value.endTime = last
 }
 
 function renderCustomerHoursChart() {
   if (!customerHoursChart.value) return
-  const values = getCustomerHoursData()
+
+  // 构建（总工时 + 项目明细）数据
+  function buildAggregatedChartData() {
+    let totals, projList
+    if (fullCustomerHours.value.length) {
+      totals = fullCustomerHours.value
+      projList = fullCustomerProjectHours.value.length ? fullCustomerProjectHours.value : []
+    } else {
+      const tmp = buildProjectDataFromCurrentPage()
+      totals = tmp.totals
+      projList = tmp.projList
+    }
+    const projGroup = new Map()
+    for (const p of projList) {
+      if (!projGroup.has(p.customer)) projGroup.set(p.customer, [])
+      projGroup.get(p.customer).push({ project: p.project, value: p.value })
+    }
+    return totals.slice().sort((a,b)=>b.value-a.value).map(t => ({
+      customer: t.name,
+      value: t.value,
+      projects: (projGroup.get(t.name) || []).sort((a,b)=>b.value-a.value)
+    }))
+  }
+
+  const values = buildAggregatedChartData()
+
+  function calcUpperBound(max) {
+    if (!isFinite(max) || max <= 0) return 1
+    const mag = Math.pow(10, Math.floor(Math.log10(max)))
+    const norm = max / mag
+    let upperNorm
+    if (norm <= 1) upperNorm = 1
+    else if (norm <= 2) upperNorm = 2
+    else if (norm <= 2.5) upperNorm = 2.5
+    else if (norm <= 5) upperNorm = 5
+    else if (norm <= 7.5) upperNorm = 7.5
+    else upperNorm = 10
+    let upper = upperNorm * mag
+    if (upper === max) upper += mag * 0.2
+    return upper
+  }
+  const rawMax = values.reduce((m,d)=>Math.max(m, Number(d.value)||0), 0)
+  const axisMax = calcUpperBound(rawMax)
+
+  const BAR_WIDTH = 20
+  const BAR_GAP = 20
+  const basePadding = 60
+  // 不再限制高度：按数据量线性增长（不设置最小/最大）
+  const dynamicHeight = values.length * (BAR_WIDTH + BAR_GAP) + basePadding
   const spec = {
     type: 'bar',
     data: [{ id: 'barData', values }],
     direction: 'horizontal',
     xField: 'value',
-    yField: 'name',
+    yField: 'customer',
+    bar: { radius: 4, width: BAR_WIDTH, maxWidth: BAR_WIDTH, minWidth: BAR_WIDTH, groupPadding: 0.4, innerPadding: 1 },
     axes: [
-      { orient: 'left', type: 'band', title: { text: '客户' } },
-      { orient: 'bottom', type: 'linear', title: { text: '工时 (Hours)' } }
+      { orient: 'left', type: 'band', title: { text: '客户' }, bandPadding: 0.4 },
+      { orient: 'bottom', type: 'linear', title: { text: '工时 (Hours)' }, min: 0, max: axisMax, nice: false }
     ],
-    label: { visible: true, position: 'right', format: '{value}' },
+    label: { visible: true, position: 'right', format: '{value}', style: { fill: '#000', fontWeight: 600, fontSize: 11 } },
+    tooltip: {
+      visible: true,
+      mark: {
+        title: { field: 'customer' },
+        content: items => {
+          const extractDataItem = (src) => {
+            if (!src) return null
+            if (Array.isArray(src)) { return extractDataItem(src[0]) }
+            if (src.datum) { if (Array.isArray(src.datum)) return src.datum[0]; return src.datum }
+            return src
+          }
+          const dataItem = extractDataItem(items)
+          const list = dataItem?.projects || []
+          if (!Array.isArray(list) || list.length === 0) { return [{ key: '无项目数据', value: '' }] }
+          return list.map(p => ({ key: p.project, value: p.value }))
+        }
+      }
+    },
+    color: { range: ['#1f77b4'] },
     animation: { appear: { animation: 'grow' } },
-    padding: { top: 10, right: 16, bottom: 30, left: 90 }
+    padding: { top: 10, right: 32, bottom: 30, left: 110 },
+    legend: { visible: false },
+    height: dynamicHeight
   }
-  if (!vchartInstance) {
-    vchartInstance = new VChart(spec, { dom: customerHoursChart.value })
-    vchartInstance.renderSync()
-  } else {
-    vchartInstance.updateSpec(spec)
-    vchartInstance.renderSync()
-  }
+
+  if (!vchartInstance) { vchartInstance = new VChart(spec, { dom: customerHoursChart.value }); vchartInstance.renderSync() } else { vchartInstance.updateSpec(spec); vchartInstance.renderSync() }
 }
 
 watch(attendanceList, () => { renderCustomerHoursChart() }, { deep: true })
 watch(fullCustomerHours, () => { renderCustomerHoursChart() }, { deep: true })
+watch(fullCustomerProjectHours, () => { renderCustomerHoursChart() }, { deep: true })
 
 onMounted(() => {
+  setCurrentMonthRange()
   getCustomerSelectOption()
   getMemberSelectOption()
   preloadAllProjects()
   if (queryParams.value.customerIds.length) loadSearchProjectsByCustomers(queryParams.value.customerIds)
   renderCustomerHoursChart()
+  getList()
 })
-getList()
 </script>
 
 <style scoped>
@@ -278,5 +387,7 @@ getList()
 .attendance-search .el-form-item { margin-right: 16px; margin-bottom: 10px; }
 .attendance-search :deep(.el-form-item__label) { font-weight: 500; }
 .attendance-search .el-input, .attendance-search .el-select { width: 260px; }
-.customer-hours-chart { height: 360px; margin: 16px 0 8px; }
+/* 去除固定高度，让图表随数据增长 */
+.customer-hours-chart { width: 100%; min-height: 140px; margin: 16px 0 8px; }
+.compact-table :deep(.el-table__cell) { padding: 4px 6px; font-size: 12px; }
 </style>
