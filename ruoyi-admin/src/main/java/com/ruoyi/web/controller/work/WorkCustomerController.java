@@ -37,7 +37,6 @@ public class WorkCustomerController extends BaseController
     /**
      * 查询客户信息列表
      */
-    @PreAuthorize("@ss.hasPermi('work:customer:list')")
     @GetMapping("/list")
     public TableDataInfo list(WorkCustomer workCustomer)
     {
@@ -102,7 +101,6 @@ public class WorkCustomerController extends BaseController
         return toAjax(workCustomerService.deleteWorkCustomerByCustomerIds(customerIds));
     }
 
-    @PreAuthorize("@ss.hasPermi('work:project:list')")
     @GetMapping("/customerSelect")
     public AjaxResult customerSelect(WorkCustomer customer)
     {

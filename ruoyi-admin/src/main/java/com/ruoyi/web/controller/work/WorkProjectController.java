@@ -50,7 +50,6 @@ public class WorkProjectController extends BaseController
     /**
      * 查询项目信息列表
      */
-    @PreAuthorize("@ss.hasPermi('work:project:list')")
     @GetMapping("/list")
     public TableDataInfo list(WorkProjectQueryCriteria workProject)
     {
@@ -117,7 +116,6 @@ public class WorkProjectController extends BaseController
 
 
 
-    @PreAuthorize("@ss.hasPermi('work:project:list')")
     @GetMapping("/projectManagerSelect")
     public AjaxResult projectManagerSelect(SysUser user)
     {

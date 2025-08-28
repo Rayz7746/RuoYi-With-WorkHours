@@ -49,7 +49,6 @@ public class WorkAssignmentController extends BaseController
     /**
      * 查询项目任务分配关系列表
      */
-    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
     @GetMapping("/list")
     public TableDataInfo list(WorkAssignment workAssignment)
     {
@@ -114,14 +113,12 @@ public class WorkAssignmentController extends BaseController
         return toAjax(workAssignmentService.deleteWorkAssignmentByAssignmentIds(assignmentIds));
     }
 
-    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
     @GetMapping("/userSelect")
     public AjaxResult userSelect(SysUser user)
     {
         return success(sysUserService.selectUserList(user));
     }
 
-    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
     @GetMapping("/projectNameSelect")
     public AjaxResult projectNameSelect(WorkProjectQueryCriteria workProject)
     {
@@ -131,7 +128,6 @@ public class WorkAssignmentController extends BaseController
     /**
      * 根据用户ID获取assignment
      */
-    @PreAuthorize("@ss.hasPermi('work:assignment:list')")
     @GetMapping("/assignment/{userId}")
     public AjaxResult getAssignmentsByUserId(@PathVariable("userId") Long userId) {
         WorkAssignment workAssignment = new WorkAssignment();

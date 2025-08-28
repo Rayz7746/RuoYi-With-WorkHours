@@ -6,7 +6,6 @@ import com.ruoyi.system.domain.WorkAssignment;
 import com.ruoyi.system.domain.vo.WorkAttendanceQuery;
 import com.ruoyi.system.service.IWorkAssignmentService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,7 +43,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 查询考勤记录列表
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:list')")
     @GetMapping("/list")
     public TableDataInfo list(WorkAttendance workAttendance)
     {
@@ -53,7 +51,6 @@ public class WorkAttendanceController extends BaseController
         return getDataTable(list);
     }
 
-    @PreAuthorize("@ss.hasPermi('work:attendance:list')")
     @GetMapping("/listArray")
     public TableDataInfo listArray(WorkAttendanceQuery workAttendanceQuery)
     {
@@ -65,7 +62,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 导出考勤记录列表
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:export')")
     @Log(title = "考勤记录", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, WorkAttendance workAttendance)
@@ -78,7 +74,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 获取考勤记录详细信息
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:query')")
     @GetMapping(value = "/{attendanceId}")
     public AjaxResult getInfo(@PathVariable("attendanceId") Long attendanceId)
     {
@@ -88,7 +83,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 新增考勤记录
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:add')")
     @Log(title = "考勤记录", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody WorkAttendance workAttendance)
@@ -99,7 +93,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 修改考勤记录
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:edit')")
     @Log(title = "考勤记录", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody WorkAttendance workAttendance)
@@ -110,7 +103,6 @@ public class WorkAttendanceController extends BaseController
     /**
      * 删除考勤记录
      */
-    @PreAuthorize("@ss.hasPermi('work:attendance:remove')")
     @Log(title = "考勤记录", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{attendanceIds}")
     public AjaxResult remove(@PathVariable Long[] attendanceIds)
