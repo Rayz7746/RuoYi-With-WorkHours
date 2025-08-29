@@ -10,6 +10,9 @@
           <li>点击周行或日期选择一周</li>
           <li>右侧输入每天工时 (0~24, 0.5 步长)</li>
           <li>周合计、日合计自动计算</li>
+          <li>默认项目会自动出现在右侧的项目中</li>
+          <li>仅在任务分配有效期内可以填写</li>
+
         </ul>
         <el-switch v-model="showWeekend" active-text="含周末" inactive-text="工作日" size="large" />
       </el-card>

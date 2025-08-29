@@ -535,6 +535,7 @@ const enabledMemberOptions = ref(undefined)
 
 // 新增：将后端用户列表映射为 el-select-v2 需要的结构
 const memberOptionsV2 = computed(() => {
+  console.log('memberOptions', memberOptions.value)
   const list = enabledMemberOptions.value || []
   return list
     .map(u => ({
