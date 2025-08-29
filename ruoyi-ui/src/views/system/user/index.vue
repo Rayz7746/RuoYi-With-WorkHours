@@ -16,21 +16,30 @@
         <!--用户数据-->
         <pane size="84">
           <el-col>
-            <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-              <el-form-item label="用户名称" prop="userName">
-                <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable style="width: 240px" @keyup.enter="handleQuery" />
+            <el-form :inline="true" :model="queryParams" ref="queryRef" class="user-query-form" label-width="90px">
+              <el-form-item label="用户名" prop="userName">
+                <el-input v-model="queryParams.userName" placeholder="请输入用户名" clearable @keyup.enter.native="handleQuery"/>
               </el-form-item>
-              <el-form-item label="手机号码" prop="phonenumber">
-                <el-input v-model="queryParams.phonenumber" placeholder="请输入手机号码" clearable style="width: 240px" @keyup.enter="handleQuery" />
-              </el-form-item>
-              <el-form-item label="状态" prop="status">
-                <el-select v-model="queryParams.status" placeholder="用户状态" clearable style="width: 240px">
-                  <el-option v-for="dict in sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
+
+              <el-form-item label="部门负责人" prop="isDepartmentLeader" class="dept-leader-item">
+                <el-select v-model="queryParams.isDepartmentLeader" placeholder="是否为部门负责人" clearable style="width:160px">
+                  <!-- 去掉“全部”选项；清空即为全部 -->
+                  <el-option label="是" value="1"/>
+                  <el-option label="否" value="0"/>
                 </el-select>
               </el-form-item>
-              <el-form-item label="创建时间" style="width: 308px">
-                <el-date-picker v-model="dateRange" value-format="YYYY-MM-DD" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+
+              <el-form-item label="状态" prop="status">
+                <el-select v-model="queryParams.status" placeholder="用户状态" clearable style="width:140px">
+                  <el-option label="正常" value="0"/>
+                  <el-option label="停用" value="1"/>
+                </el-select>
               </el-form-item>
+
+              <el-form-item label="创建时间">
+                <!-- 原有时间选择器 -->
+              </el-form-item>
+
               <el-form-item>
                 <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
                 <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -62,7 +71,18 @@
               <el-table-column label="用户名称" align="center" key="userName" prop="userName" v-if="columns[1].visible" :show-overflow-tooltip="true" />
               <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" v-if="columns[2].visible" :show-overflow-tooltip="true" />
               <el-table-column label="部门" align="center" key="deptName" prop="dept.deptName" v-if="columns[3].visible" :show-overflow-tooltip="true" />
-              <el-table-column label="手机号码" align="center" key="phonenumber" prop="phonenumber" v-if="columns[4].visible" width="120" />
+              <!-- 改成带开关的部门负责人列 -->
+              <el-table-column label="部门负责人" align="center" key="isDepartmentLeader" v-if="columns[4].visible">
+                <template #default="scope">
+                  <el-switch
+                    v-model="scope.row.isDepartmentLeader"
+                    active-value="1"
+                    inactive-value="0"
+                    @change="handleIsDepartmentLeaderChange(scope.row)"
+                  />
+                </template>
+              </el-table-column>
+              <!-- <el-table-column label="手机号码" align="center" key="phonenumber" ... /> -->
               <el-table-column label="状态" align="center" key="status" v-if="columns[5].visible">
                 <template #default="scope">
                   <el-switch
@@ -102,90 +122,102 @@
     </el-row>
 
     <!-- 添加或修改用户配置对话框 -->
-    <el-dialog :title="title" v-model="open" width="600px" append-to-body>
-      <el-form :model="form" :rules="rules" ref="userRef" label-width="80px">
-        <el-row>
+    <el-dialog v-model="open" :title="title" width="700px">
+      <el-form ref="userRef" :model="form" :rules="rules" label-width="100px"> <!-- 调整整体标签宽度 -->
+        <el-row :gutter="20">
+          <!-- 用户名称 仅新增显示 -->
+          <el-col v-if="!isEdit" :span="12">
+            <el-form-item label="用户名称" prop="userName">
+              <el-input v-model="form.userName" placeholder="请输入用户名称" />
+            </el-form-item>
+          </el-col>
+          <!-- 用户昵称 -->
           <el-col :span="12">
             <el-form-item label="用户昵称" prop="nickName">
-              <el-input v-model="form.nickName" placeholder="请输入用户昵称" maxlength="30" />
+              <el-input v-model="form.nickName" placeholder="请输入用户昵称"/>
             </el-form-item>
           </el-col>
+          <!-- 归属部门 -->
           <el-col :span="12">
             <el-form-item label="归属部门" prop="deptId">
-              <el-tree-select v-model="form.deptId" :data="enabledDeptOptions" :props="{ value: 'id', label: 'label', children: 'children' }" value-key="id" placeholder="请选择归属部门" check-strictly />
+              <el-tree-select
+                v-model="form.deptId"
+                :data="enabledDeptOptions"
+                :props="{ value: 'id', label: 'label', children: 'children' }"
+                value-key="id"
+                placeholder="请选择部门"
+                check-strictly
+              />
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row>
+          <!-- 手机号码 -->
           <el-col :span="12">
             <el-form-item label="手机号码" prop="phonenumber">
-              <el-input v-model="form.phonenumber" placeholder="请输入手机号码" maxlength="11" />
+              <el-input v-model="form.phonenumber" placeholder="请输入手机号"/>
             </el-form-item>
           </el-col>
+          <!-- 邮箱 -->
           <el-col :span="12">
             <el-form-item label="邮箱" prop="email">
-              <el-input v-model="form.email" placeholder="请输入邮箱" maxlength="50" />
+              <el-input v-model="form.email" placeholder="请输入邮箱"/>
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row>
+          <!-- 性别 -->
           <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户名称" prop="userName">
-              <el-input v-model="form.userName" placeholder="请输入用户名称" maxlength="30" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item v-if="form.userId == undefined" label="用户密码" prop="password">
-              <el-input v-model="form.password" placeholder="请输入用户密码" type="password" maxlength="20" show-password />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="12">
-            <el-form-item label="用户性别">
+            <el-form-item label="用户性别" prop="sex">
               <el-select v-model="form.sex" placeholder="请选择">
-                <el-option v-for="dict in sys_user_sex" :key="dict.value" :label="dict.label" :value="dict.value"></el-option>
+                <el-option label="男" value="0"/>
+                <el-option label="女" value="1"/>
+                <el-option label="未知" value="2"/>
               </el-select>
             </el-form-item>
           </el-col>
+          <!-- 状态 -->
           <el-col :span="12">
-            <el-form-item label="状态">
+            <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
-                <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">{{ dict.label }}</el-radio>
+                <el-radio label="0">正常</el-radio>
+                <el-radio label="1">停用</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row>
+          <!-- 部门负责人 放一行不换行 -->
           <el-col :span="12">
-            <el-form-item label="岗位">
-              <el-select v-model="form.postIds" multiple placeholder="请选择">
-                <el-option v-for="item in postOptions" :key="item.postId" :label="item.postName" :value="item.postId" :disabled="item.status == 1"></el-option>
-              </el-select>
+            <el-form-item label="部门负责人" prop="isDepartmentLeader" class="dept-leader-item" label-width="100px">
+              <el-radio-group v-model="form.isDepartmentLeader">
+                <el-radio label="1">是</el-radio>
+                <el-radio label="0">否</el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="角色">
-              <el-select v-model="form.roleIds" multiple placeholder="请选择">
-                <el-option v-for="item in roleOptions" :key="item.roleId" :label="item.roleName" :value="item.roleId" :disabled="item.status == 1"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
+          <!-- 岗位 -->
           <el-col :span="24">
-            <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"></el-input>
+            <el-form-item label="岗位" prop="postIds">
+              <el-select v-model="form.postIds" multiple placeholder="请选择" style="width:100%">
+                <el-option v-for="p in postOptions" :key="p.postId" :label="p.postName" :value="p.postId"/>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- 角色 -->
+          <el-col :span="24">
+            <el-form-item label="角色" prop="roleIds">
+              <el-select v-model="form.roleIds" multiple placeholder="请选择" style="width:100%">
+                <el-option v-for="r in roleOptions" :key="r.roleId" :label="r.roleName" :value="r.roleId"/>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <!-- 备注 -->
+          <el-col :span="24">
+            <el-form-item label="备注" prop="remark">
+              <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"/>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+        <el-button @click="cancel">取 消</el-button>
+      </div>
     </el-dialog>
 
     <!-- 用户导入对话框 -->
@@ -216,7 +248,7 @@
 <script setup name="User">
 import { getToken } from "@/utils/auth"
 import useAppStore from '@/store/modules/app'
-import { changeUserStatus, listUser, resetUserPwd, delUser, getUser, updateUser, addUser, deptTreeSelect } from "@/api/system/user"
+import { changeUserStatus, listUser, resetUserPwd, delUser, getUser, updateUser, addUser, deptTreeSelect, changeIsDepartmentLeader } from "@/api/system/user"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
 
@@ -262,7 +294,7 @@ const columns = ref([
   { key: 1, label: `用户名称`, visible: true },
   { key: 2, label: `用户昵称`, visible: true },
   { key: 3, label: `部门`, visible: true },
-  { key: 4, label: `手机号码`, visible: true },
+  { key: 4, label: `部门负责人`, visible: true },
   { key: 5, label: `状态`, visible: true },
   { key: 6, label: `创建时间`, visible: true }
 ])
@@ -275,14 +307,16 @@ const data = reactive({
     userName: undefined,
     phonenumber: undefined,
     status: undefined,
-    deptId: undefined
+    deptId: undefined,
+    isDepartmentLeader: undefined   // 新增查询参数
   },
   rules: {
     userName: [{ required: true, message: "用户名称不能为空", trigger: "blur" }, { min: 2, max: 20, message: "用户名称长度必须介于 2 和 20 之间", trigger: "blur" }],
     nickName: [{ required: true, message: "用户昵称不能为空", trigger: "blur" }],
     password: [{ required: true, message: "用户密码不能为空", trigger: "blur" }, { min: 5, max: 20, message: "用户密码长度必须介于 5 和 20 之间", trigger: "blur" }, { pattern: /^[^<>"'|\\]+$/, message: "不能包含非法字符：< > \" ' \\\ |", trigger: "blur" }],
     email: [{ type: "email", message: "请输入正确的邮箱地址", trigger: ["blur", "change"] }],
-    phonenumber: [{ pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: "请输入正确的手机号码", trigger: "blur" }]
+    phonenumber: [{ pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: "请输入正确的手机号码", trigger: "blur" }],
+    isDepartmentLeader: [{ required: true, message: "请选择是否为部门负责人", trigger: "change" }] // 新增：可选是否必填
   }
 })
 
@@ -304,7 +338,10 @@ function getList() {
   loading.value = true
   listUser(proxy.addDateRange(queryParams.value, dateRange.value)).then(res => {
     loading.value = false
-    userList.value = res.rows
+    userList.value = (res.rows || []).map(r => ({
+      ...r,
+      isDepartmentLeader: (r.isDepartmentLeader === 1 || r.isDepartmentLeader === '1') ? '1' : '0'
+    }))
     total.value = res.total
   })
 }
@@ -347,6 +384,7 @@ function resetQuery() {
   dateRange.value = []
   proxy.resetForm("queryRef")
   queryParams.value.deptId = undefined
+  queryParams.value.isDepartmentLeader = undefined // 新增：清空
   proxy.$refs.deptTreeRef.setCurrentKey(null)
   handleQuery()
 }
@@ -471,6 +509,7 @@ function reset() {
     email: undefined,
     sex: undefined,
     status: "0",
+    isDepartmentLeader: "0",   // 新增表单字段默认值
     remark: undefined,
     postIds: [],
     roleIds: []
@@ -493,6 +532,7 @@ function handleAdd() {
     open.value = true
     title.value = "添加用户"
     form.value.password = initPassword.value
+    form.value.isDepartmentLeader = "0"
   })
 }
 
@@ -501,7 +541,10 @@ function handleUpdate(row) {
   reset()
   const userId = row.userId || ids.value
   getUser(userId).then(response => {
-    form.value = response.data
+    form.value = {
+      ...response.data,
+      isDepartmentLeader: (response.data.isDepartmentLeader === 1 || response.data.isDepartmentLeader === '1') ? '1' : '0'
+    }
     postOptions.value = response.posts
     roleOptions.value = response.roles
     form.value.postIds = response.postIds
@@ -533,6 +576,21 @@ function submitForm() {
   })
 }
 
+/** 是否为部门负责人切换 */
+function handleIsDepartmentLeaderChange(row) {
+  const text = row.isDepartmentLeader === "1" ? "设为部门负责人" : "取消部门负责人"
+  proxy.$modal.confirm('确认要' + (row.isDepartmentLeader === "1" ? '设置' : '取消') + '"' + row.userName + '"为部门负责人吗?').then(() => {
+    // 建议后端提供单字段接口；若没有可改为 updateUser(row)（但需携带必要字段）
+    return changeIsDepartmentLeader(row.userId, row.isDepartmentLeader)
+  }).then(() => {
+    proxy.$modal.msgSuccess(text + "成功")
+  }).catch(() => {
+    row.isDepartmentLeader = row.isDepartmentLeader === "1" ? "0" : "1"
+  })
+}
+
+const isEdit = computed(() => !!form.value.userId)
+
 onMounted(() => {
   getDeptTree()
   getList()
@@ -541,3 +599,11 @@ onMounted(() => {
   })
 })
 </script>
+
+<style scoped>
+.user-query-form .el-form-item { margin-bottom: 8px; }
+.dept-leader-item .el-form-item__label { white-space: nowrap; }
+.user-query-form { flex-wrap: wrap; }
+.dept-leader-item { min-width: 220px; }
+.dept-leader-item .el-form-item__content { align-items: center; }
+</style>

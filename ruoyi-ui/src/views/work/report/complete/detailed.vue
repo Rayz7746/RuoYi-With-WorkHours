@@ -16,7 +16,7 @@
         />
       </el-form-item>
 
-      <!-- 项目（受客户多选联动，多选） -->
+      <!-- 项目（多选） -->
       <el-form-item label="项目" prop="projectIds">
         <el-select-v2
           v-model="queryParams.projectIds"
@@ -27,6 +27,25 @@
           filterable
           clearable
           placeholder="请选择项目(可多选)"
+          style="width: 260px"
+        />
+      </el-form-item>
+
+      <!-- 新增：部门（多选树） -->
+      <el-form-item label="部门" prop="deptIds">
+        <el-tree-select
+          v-model="queryParams.deptIds"
+          :data="enabledDeptOptions"
+          node-key="id"
+          :props="{ label: 'label', children: 'children', disabled: 'disabled' }"
+          multiple
+          show-checkbox
+          check-strictly
+          collapse-tags
+          collapse-tags-tooltip
+          filterable
+          clearable
+          placeholder="请选择部门(可多选)"
           style="width: 260px"
         />
       </el-form-item>
@@ -96,6 +115,7 @@ import { ref, reactive, toRefs, computed, watch, getCurrentInstance, onMounted }
 // 修改：使用 listAttendanceArray
 import { listAttendanceArray } from "@/api/work/attendance"
 import { userSelect, projectNameSelect, customerSelect } from "@/api/work/assignment"
+import { deptTreeSelect } from "@/api/system/user"
 import VChart from '@visactor/vchart'
 
 const { proxy } = getCurrentInstance()
@@ -117,6 +137,7 @@ const data = reactive({
     customerIds: [],
     projectIds: [],
     userIds: [],
+    deptIds: [], // 新增
     startTime: '',
     endTime: ''
   }
@@ -125,8 +146,7 @@ const { queryParams } = toRefs(data)
 
 function buildQueryParams() {
   const qp = { ...queryParams.value }
-  // 移除空数组
-  ;['customerIds','projectIds','userIds'].forEach(k => { if (!Array.isArray(qp[k]) || qp[k].length === 0) delete qp[k] })
+  ;['customerIds','projectIds','userIds','deptIds'].forEach(k => { if (!Array.isArray(qp[k]) || qp[k].length === 0) delete qp[k] })
   // 处理时间，空字符串不传
   if (!qp.startTime) delete qp.startTime
   if (!qp.endTime) delete qp.endTime
@@ -184,16 +204,40 @@ function resetQuery() {
   queryParams.value.customerIds = []
   queryParams.value.projectIds = []
   queryParams.value.userIds = []
+  queryParams.value.deptIds = [] // 新增
   // 重置到当前月（而不是清空）
   setCurrentMonthRange()
   handleQuery()
+  applyDeptFilter() // 还原人员
 }
 
-// 项目人员
-const memberOptions = ref()
-const enabledMemberOptions = ref()
-const memberOptionsV2 = computed(() => (enabledMemberOptions.value || []).map(u => ({ value: u.userId ?? u.value, label: u.nickName ?? u.label, disabled: u.disabled === true || u.status === 1 || u.status === '1' })).filter(o => o.value != null && o.label != null))
-function getMemberSelectOption() { userSelect().then(res => { memberOptions.value = res.data || []; enabledMemberOptions.value = (memberOptions.value || []).filter(u => !(u?.disabled === true || u?.status === 1 || u?.status === '1')) }) }
+// ============= 新增：部门树 & 人员按部门过滤 =============
+const deptOptions = ref([])
+const enabledDeptOptions = ref([])
+function filterDisabledDept(list = []) { return list.filter(d => { if (d.disabled) return false; if (Array.isArray(d.children) && d.children.length) d.children = filterDisabledDept(d.children); return true }) }
+function getDeptTree() { deptTreeSelect().then(res => { deptOptions.value = res.data || []; enabledDeptOptions.value = filterDisabledDept(JSON.parse(JSON.stringify(deptOptions.value))) }) }
+
+function getUserDeptId(u) { return u?.deptId ?? u?.dept_id ?? u?.dept?.deptId ?? u?.dept?.dept_id ?? null }
+function baseMemberEnabled(u) { return !(u?.disabled === true || u?.status === 1 || u?.status === '1') }
+function applyDeptFilter() {
+  const selected = queryParams.value.deptIds
+  if (!Array.isArray(memberOptions.value)) { enabledMemberOptions.value = []; return }
+  if (!Array.isArray(selected) || selected.length === 0) {
+    enabledMemberOptions.value = (memberOptions.value || []).filter(baseMemberEnabled)
+  } else {
+    const set = new Set(selected.map(String))
+    enabledMemberOptions.value = (memberOptions.value || []).filter(u => baseMemberEnabled(u) && set.has(String(getUserDeptId(u))))
+  }
+}
+watch(() => queryParams.value.deptIds, () => { queryParams.value.userIds = []; applyDeptFilter() }, { deep: true })
+
+// 修改成员获取：获取后做部门过滤
+function getMemberSelectOption() { userSelect().then(res => { memberOptions.value = res.data || []; applyDeptFilter() }) }
+// 调整 memberOptions/ enabledMemberOptions 初始化为数组
+const memberOptions = ref([])
+const enabledMemberOptions = ref([])
+const memberOptionsV2 = computed(() => (enabledMemberOptions.value || []).map(u => ({ value: u.userId ?? u.value, label: u.nickName ?? u.label, disabled: !baseMemberEnabled(u) })).filter(o => o.value != null && o.label != null))
+// ============= 新增结束 =============
 
 // 客户
 const customerOptions = ref()
@@ -350,6 +394,7 @@ onMounted(() => {
   getCustomerSelectOption()
   getMemberSelectOption()
   preloadAllProjects()
+  getDeptTree() // 新增
   if (queryParams.value.customerIds.length) loadSearchProjectsByCustomers(queryParams.value.customerIds)
   getList(false)
 })

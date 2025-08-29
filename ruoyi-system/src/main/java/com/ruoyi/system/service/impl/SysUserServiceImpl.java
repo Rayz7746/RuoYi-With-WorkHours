@@ -129,6 +129,18 @@ public class SysUserServiceImpl implements ISysUserService
     }
 
     /**
+     * 通过部门ID查询用户
+     *
+     * @param deptId 用户ID
+     * @return 用户对象信息
+     */
+    @Override
+    public List<SysUser> selectUserByDeptId(Long deptId)
+    {
+        return userMapper.selectUserByDeptId(deptId);
+    }
+
+    /**
      * 查询用户所属角色组
      * 
      * @param userName 用户名
@@ -325,6 +337,18 @@ public class SysUserServiceImpl implements ISysUserService
      */
     @Override
     public int updateUserStatus(SysUser user)
+    {
+        return userMapper.updateUser(user);
+    }
+
+    /**
+     * 修改是否是部门负责人状态
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    @Override
+    public int updateUserIsDepartmentManager(SysUser user)
     {
         return userMapper.updateUser(user);
     }

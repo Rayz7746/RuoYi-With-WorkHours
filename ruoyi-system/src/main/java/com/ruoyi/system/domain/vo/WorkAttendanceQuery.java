@@ -4,9 +4,16 @@ public class WorkAttendanceQuery {
     private Long[] userIds;
     private Long[] projectIds;
     private Long[] customerIds;
+    private Long[] deptIds;
     private String startTime;
     private String endTime;
 
+    public Long[] getDeptIds() {
+        return deptIds;
+    }
+    public void setDeptIds(Long[] deptIds) {
+        this.deptIds = deptIds;
+    }
     public Long[] getUserIds() {
         return userIds;
     }

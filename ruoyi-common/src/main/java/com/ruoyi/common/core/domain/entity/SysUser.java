@@ -49,6 +49,11 @@ public class SysUser extends BaseEntity
     @Excel(name = "用户性别", readConverterExp = "0=男,1=女,2=未知")
     private String sex;
 
+    /** 是否为部门负责人 */
+    @Excel(name = "是否为部门负责人", readConverterExp = "0=否,1=是")
+    private String isDepartmentLeader;
+
+
     /** 用户头像 */
     private String avatar;
 
@@ -189,6 +194,15 @@ public class SysUser extends BaseEntity
     {
         this.sex = sex;
     }
+
+    public String getIsDepartmentLeader() {
+        return isDepartmentLeader;
+    }
+
+    public void setIsDepartmentLeader(String isDepartmentLeader) {
+        this.isDepartmentLeader = isDepartmentLeader;
+    }
+
 
     public String getAvatar()
     {
@@ -333,6 +347,7 @@ public class SysUser extends BaseEntity
             .append("updateTime", getUpdateTime())
             .append("remark", getRemark())
             .append("dept", getDept())
-            .toString();
+            .append("isDepartmentLeader", getIsDepartmentLeader())
+                .toString();
     }
 }

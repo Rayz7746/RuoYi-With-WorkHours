@@ -78,6 +78,15 @@ export function getUserProfile() {
   })
 }
 
+// 查询部门所有人信息
+export function getAllStaff() {
+  return request({
+    url: '/system/user/profile/deptStaff',
+    method: 'get'
+  })
+}
+
+
 // 修改用户个人信息
 export function updateUserProfile(data) {
   return request({
@@ -132,5 +141,15 @@ export function deptTreeSelect() {
   return request({
     url: '/system/user/deptTree',
     method: 'get'
+  })
+}
+
+/** 修改是否为部门负责人 */
+export function changeIsDepartmentLeader(userId, isDepartmentLeader) {
+  const data = { userId, isDepartmentLeader }
+  return request({
+    url: '/system/user/changeIsDepartmentLeader',
+    method: 'put',
+    data: data
   })
 }

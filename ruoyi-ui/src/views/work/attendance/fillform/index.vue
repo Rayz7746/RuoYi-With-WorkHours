@@ -418,25 +418,43 @@ async function saveAll(){
         const val = dayMap[dkey]
         const note = comments[pid]?.[dkey]
         if(val == null && !note) return // 没有内容不提交
-        const attendanceId = attendanceIds[pid]?.[dkey]
+        // 优先使用当前 attendanceIds，没有则回退 baseline（避免因本地结构重建丢失而误判为新增）
+        const existingId = (attendanceIds[pid]?.[dkey]) || (baselineAttendanceIds[pid]?.[dkey])
         const payload = {
-          attendanceId: attendanceId || null,
-            projectId: pid,
-            userId: currentUserId,
-            attendanceDate: dkey,
-            workingHours: val ?? 0,
-            comment: note || null
+          attendanceId: existingId || null,
+          projectId: pid,
+          userId: currentUserId,
+          attendanceDate: dkey,
+          workingHours: val ?? 0,
+          comment: note || null
         }
-        if(attendanceId){
-          tasks.push(updateAttendance(payload))
-        } else {
-          tasks.push(addAttendance(payload).then(res=>{ // 记录新ID
-            const newId = res?.data?.attendanceId || res?.data?.id
-            if(newId){
-              if(!attendanceIds[pid]) attendanceIds[pid] = {}
-              attendanceIds[pid][dkey] = newId
-            }
+        if(existingId){
+          // 直接更新（即使当前 attendanceIds 丢失，只要 baseline 有记录就认为是更新）
+          tasks.push(updateAttendance(payload).then(()=>{
+            // 确保本地 id 保持
+            if(!attendanceIds[pid]) attendanceIds[pid] = {}
+            attendanceIds[pid][dkey] = existingId
           }))
+        } else {
+          // 新增
+            tasks.push(addAttendance(payload).then(res=>{ // 记录新ID
+              const newId = res?.data?.attendanceId || res?.data?.id
+              if(newId){
+                if(!attendanceIds[pid]) attendanceIds[pid] = {}
+                attendanceIds[pid][dkey] = newId
+              }
+            }).catch(err=>{
+              // 兜底：如果后端仍提示唯一约束（可能并发或其它原因），尝试回退为更新
+              const msg = err?.msg || err?.message || ''
+              if(/duplicate entry/i.test(msg) || /唯一|unique/i.test(msg)){
+                const fallbackId = attendanceIds[pid]?.[dkey] || baselineAttendanceIds[pid]?.[dkey]
+                if(fallbackId){
+                  payload.attendanceId = fallbackId
+                  return updateAttendance(payload)
+                }
+              }
+              throw err
+            }))
         }
       })
     })

@@ -55,6 +55,14 @@ public class SysProfileController extends BaseController
         return ajax;
     }
 
+    @GetMapping("/deptStaff")
+    public AjaxResult allDeptStaff(){
+        LoginUser loginUser = getLoginUser();
+        SysUser user = loginUser.getUser();
+        return AjaxResult.success(userService.selectUserByDeptId(user.getDeptId()));
+    }
+
+
     /**
      * 修改用户
      */

@@ -215,6 +215,19 @@ public class SysUserController extends BaseController
         return toAjax(userService.updateUserStatus(user));
     }
 
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/changeIsDepartmentLeader")
+    public AjaxResult ChangeIsDepartmentLeader(@RequestBody SysUser user)
+    {
+        userService.checkUserAllowed(user);
+        userService.checkUserDataScope(user.getUserId());
+        user.setUpdateBy(getUsername());
+        return toAjax(userService.updateUserIsDepartmentManager(user));
+    }
+
+
+
     /**
      * 根据用户编号获取授权角色
      */

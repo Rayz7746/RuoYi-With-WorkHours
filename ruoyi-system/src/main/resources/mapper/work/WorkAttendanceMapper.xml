@@ -30,6 +30,7 @@
         <result property="userName" column="u_user_name"/>
         <result property="nickName" column="u_nick_name"/>
         <result property="status"   column="u_status"/>
+        <result property="deptId"        column="u_dept_id"         />
     </resultMap>
 
     <sql id="selectWorkAttendanceVo">
@@ -50,7 +51,8 @@
         u.user_id   as u_user_id,
         u.user_name as u_user_name,
         u.nick_name as u_nick_name,
-        u.status    as u_status
+        u.status    as u_status,
+        u.dept_id   as u_dept_id
         from work_attendance att
         left join work_project p on att.project_id = p.project_id and p.is_active = 1
         left join sys_user u on att.user_id = u.user_id
@@ -82,6 +84,7 @@
                     #{uid}
                 </foreach>
             </if>
+            <if test="deptIds != null and deptIds.length > 0"> and u.dept_id in <foreach collection="deptIds" item="did" open="(" separator="," close=")"> #{did} </foreach> </if>
 
             <if test="projectIds != null and projectIds.length > 0">
                 and att.project_id in

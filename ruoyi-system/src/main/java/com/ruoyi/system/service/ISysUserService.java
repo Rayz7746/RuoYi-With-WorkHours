@@ -51,6 +51,14 @@ public interface ISysUserService
     public SysUser selectUserById(Long userId);
 
     /**
+     * 通过部门ID查询用户
+     *
+     * @param deptId 部门ID
+     * @return 用户对象信息
+     */
+    public List<SysUser> selectUserByDeptId(Long deptId);
+
+    /**
      * 根据用户ID查询用户所属角色组
      * 
      * @param userName 用户名
@@ -143,6 +151,14 @@ public interface ISysUserService
      * @return 结果
      */
     public int updateUserStatus(SysUser user);
+
+    /**
+     * 修改是否是部门负责人状态
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    public int updateUserIsDepartmentManager(SysUser user);
 
     /**
      * 修改用户基本信息
